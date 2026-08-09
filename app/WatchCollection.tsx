@@ -39,6 +39,17 @@ type Watch = {
   lastWornAt: string | null;
   lastPriceCheckAt: string | null;
   lastPriceCheckStatus: string;
+  marketProvider: "" | "the-watch-info" | "manual";
+  marketModelId: string;
+  marketModelName: string;
+  marketPriceCents: number | null;
+  marketLowCents: number | null;
+  marketHighCents: number | null;
+  marketSampleSize: number;
+  marketConfidence: "" | "high" | "medium" | "low" | "manual";
+  marketCurrency: string;
+  marketCheckedAt: string | null;
+  marketCheckStatus: string;
   priceHistory: PricePoint[];
   createdAt: string;
   updatedAt: string;
@@ -63,9 +74,18 @@ type ImportedProduct = {
   imageUrl: string;
 };
 
+type MarketMatch = {
+  id: string;
+  brand: string;
+  name: string;
+  reference: string;
+  sampleSize: number;
+  averagePriceCents: number | null;
+};
+
 type Filter = "all" | WatchStatus | "deals" | "service";
 type SortMode = "brand" | "grail" | "price-low" | "price-high" | "newest";
-type ViewMode = "list" | "grid";
+type ViewMode = "list" | "grid" | "table";
 
 const FILTERS: { label: string; value: Filter }[] = [
   { label: "All watches", value: "all" },
@@ -119,6 +139,14 @@ function isServiceDue(watch: Watch) {
   return new Date(`${watch.nextServiceDate}T23:59:59`).getTime() <= Date.now();
 }
 
+function latestPriceCheck(watch: Watch) {
+  const timestamps = [watch.lastPriceCheckAt, watch.marketCheckedAt]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => ({ value, time: Date.parse(value) }))
+    .filter((item) => !Number.isNaN(item.time));
+  return timestamps.sort((a, b) => b.time - a.time)[0]?.value || null;
+}
+
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
@@ -152,6 +180,9 @@ export default function WatchCollection() {
   const [priceCurrency, setPriceCurrency] = useState("USD");
   const [checkingPrice, setCheckingPrice] = useState(false);
   const [priceCheckMessage, setPriceCheckMessage] = useState("");
+  const [marketMatches, setMarketMatches] = useState<MarketMatch[]>([]);
+  const [checkingMarket, setCheckingMarket] = useState(false);
+  const [marketMessage, setMarketMessage] = useState("");
   const [rouletteWatch, setRouletteWatch] = useState<Watch | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [showVault, setShowVault] = useState(false);
@@ -167,6 +198,7 @@ export default function WatchCollection() {
   const [deletingWatch, setDeletingWatch] = useState(false);
   const watchFormRef = useRef<HTMLFormElement>(null);
   const priceFormRef = useRef<HTMLFormElement>(null);
+  const autoMarketRefreshStarted = useRef(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -193,6 +225,28 @@ export default function WatchCollection() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (loading || autoMarketRefreshStarted.current) return;
+    autoMarketRefreshStarted.current = true;
+    const staleMatches = watches.filter((watch) => watch.marketProvider === "the-watch-info" && watch.marketModelId && (!watch.marketCheckedAt || Date.now() - Date.parse(watch.marketCheckedAt) >= 24 * 60 * 60 * 1000)).slice(0, 100);
+    if (!staleMatches.length) return;
+    void (async () => {
+      for (const watch of staleMatches) {
+        try {
+          const response = await fetch("/api/market", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "refresh", id: watch.id }),
+          });
+          const data = await response.json() as { watch?: Watch };
+          if (response.ok && data.watch) setWatches((current) => current.map((item) => item.id === data.watch!.id ? data.watch! : item));
+        } catch {
+          // Automatic refresh is best-effort; the manual control reports provider errors.
+        }
+      }
+    })();
+  }, [loading, watches]);
 
   useEffect(() => {
     if (!showForm && !showBrandForm && !priceWatch && !rouletteWatch && !showGuide && !showVault && !showCompare && !deleteWatch) return;
@@ -234,15 +288,17 @@ export default function WatchCollection() {
 
   const collectorLedger = useMemo(() => {
     const owned = watches.filter((watch) => watch.status === "owned");
-    const currencies = new Set(owned.map((watch) => watch.currency));
-    const canTotal = currencies.size <= 1;
-    const currency = owned[0]?.currency || "USD";
+    const purchased = owned.filter((watch) => watch.purchasePriceCents !== null);
+    const valued = owned.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
+    const purchaseCurrencies = new Set(purchased.map((watch) => watch.currency));
+    const valueCurrencies = new Set(valued.map((watch) => watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency));
     const purchaseTotal = owned.reduce((sum, watch) => sum + (watch.purchasePriceCents || 0), 0);
-    const currentTotal = owned.reduce((sum, watch) => sum + (watch.currentPriceCents || 0), 0);
+    const currentTotal = owned.reduce((sum, watch) => sum + (watch.marketPriceCents ?? watch.currentPriceCents ?? 0), 0);
     const recordedPurchases = owned.filter((watch) => watch.purchasePriceCents !== null).length;
     return {
-      purchaseValue: canTotal && recordedPurchases ? formatPrice(purchaseTotal, currency) : recordedPurchases ? "Mixed currencies" : "Not recorded",
-      currentValue: canTotal && owned.some((watch) => watch.currentPriceCents !== null) ? formatPrice(currentTotal, currency) : owned.length ? "Mixed currencies" : "No watches yet",
+      purchaseValue: purchaseCurrencies.size <= 1 && recordedPurchases ? formatPrice(purchaseTotal, purchased[0]?.currency || "USD") : recordedPurchases ? "Mixed currencies" : "Not recorded",
+      currentValue: valueCurrencies.size <= 1 && valued.length ? formatPrice(currentTotal, valued[0]?.marketPriceCents !== null ? valued[0]?.marketCurrency : valued[0]?.currency) : valued.length ? "Mixed currencies" : owned.length ? "Not recorded" : "No watches yet",
+      providerValues: valued.filter((watch) => watch.marketProvider === "the-watch-info").length,
       recordedPurchases,
       owned: owned.length,
     };
@@ -318,6 +374,8 @@ export default function WatchCollection() {
 
   function openPriceWatch(watch: Watch) {
     setPriceCheckMessage("");
+    setMarketMessage("");
+    setMarketMatches([]);
     setPriceCurrency(watch.currency || "USD");
     setPriceWatch(watch);
   }
@@ -399,32 +457,51 @@ export default function WatchCollection() {
   }
 
   async function checkAllPrices() {
-    const trackable = watches.filter((watch) => watch.listingUrl);
+    const trackable = watches.filter((watch) => watch.listingUrl || (watch.marketProvider === "the-watch-info" && watch.marketModelId));
     if (!trackable.length) {
-      setBulkPriceMessage("Add a product-page link to a watch before refreshing prices.");
+      setBulkPriceMessage("Add a product-page link or confirm a market match before refreshing prices.");
       return;
     }
+    const totalChecks = trackable.reduce((total, watch) => total + Number(Boolean(watch.listingUrl)) + Number(Boolean(watch.marketProvider === "the-watch-info" && watch.marketModelId)), 0);
     setCheckingAllPrices(true);
-    setBulkPriceMessage(`Checking 0 of ${trackable.length} listings…`);
+    setBulkPriceMessage(`Checking 0 of ${totalChecks} price sources…`);
     let checked = 0;
     let failed = 0;
     for (const watch of trackable) {
-      try {
-        const response = await fetch("/api/prices/check", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ id: watch.id, listingUrl: watch.listingUrl }),
-        });
-        const data = (await response.json()) as { watch?: Watch };
-        if (!response.ok || !data.watch) throw new Error("Price check failed");
-        setWatches((current) => current.map((item) => (item.id === data.watch!.id ? data.watch! : item)));
-      } catch {
-        failed += 1;
+      if (watch.listingUrl) {
+        try {
+          const response = await fetch("/api/prices/check", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ id: watch.id, listingUrl: watch.listingUrl }),
+          });
+          const data = (await response.json()) as { watch?: Watch };
+          if (!response.ok || !data.watch) throw new Error("Price check failed");
+          setWatches((current) => current.map((item) => (item.id === data.watch!.id ? data.watch! : item)));
+        } catch {
+          failed += 1;
+        }
+        checked += 1;
+        setBulkPriceMessage(`Checking ${checked} of ${totalChecks} price sources…`);
       }
-      checked += 1;
-      setBulkPriceMessage(`Checking ${checked} of ${trackable.length} listings…`);
+      if (watch.marketProvider === "the-watch-info" && watch.marketModelId) {
+        try {
+          const response = await fetch("/api/market", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "refresh", id: watch.id, force: true }),
+          });
+          const data = (await response.json()) as { watch?: Watch };
+          if (!response.ok || !data.watch) throw new Error("Market check failed");
+          setWatches((current) => current.map((item) => (item.id === data.watch!.id ? data.watch! : item)));
+        } catch {
+          failed += 1;
+        }
+        checked += 1;
+        setBulkPriceMessage(`Checking ${checked} of ${totalChecks} price sources…`);
+      }
     }
-    setBulkPriceMessage(failed ? `Updated ${checked - failed}; ${failed} ${failed === 1 ? "store" : "stores"} couldn’t be read.` : `All ${checked} tracked listings are up to date.`);
+    setBulkPriceMessage(failed ? `Updated ${checked - failed}; ${failed} price ${failed === 1 ? "source" : "sources"} couldn’t be read.` : `All ${checked} price sources are up to date.`);
     setCheckingAllPrices(false);
   }
 
@@ -438,8 +515,8 @@ export default function WatchCollection() {
       );
       return;
     }
-    const headings = ["Brand", "Model", "Reference", "Status", "Grail score", "Current price", "Target price", "Purchase price", "Currency", "Movement", "Case size", "Case material", "Dial color", "Water resistance", "Tags", "Purchase date", "Last service", "Next service", "Wear count", "Listing URL", "Image URL", "Notes"];
-    const rows = watches.map((watch) => [watch.brand, watch.model, watch.reference, watch.status, watch.grailScore, watch.currentPriceCents === null ? "" : watch.currentPriceCents / 100, watch.targetPriceCents === null ? "" : watch.targetPriceCents / 100, watch.purchasePriceCents === null ? "" : watch.purchasePriceCents / 100, watch.currency, watch.movement, watch.caseSize, watch.caseMaterial, watch.dialColor, watch.waterResistance, watch.tags, watch.purchaseDate, watch.lastServiceDate, watch.nextServiceDate, watch.wearCount, watch.listingUrl, watch.imageUrl, watch.notes]);
+    const headings = ["Brand", "Model", "Reference", "Status", "Grail score", "Current price", "Target price", "Market estimate", "Market low", "Market high", "Market confidence", "Market samples", "Market provider", "Purchase price", "Currency", "Movement", "Case size", "Case material", "Dial color", "Water resistance", "Tags", "Purchase date", "Last service", "Next service", "Wear count", "Listing URL", "Image URL", "Notes"];
+    const rows = watches.map((watch) => [watch.brand, watch.model, watch.reference, watch.status, watch.grailScore, watch.currentPriceCents === null ? "" : watch.currentPriceCents / 100, watch.targetPriceCents === null ? "" : watch.targetPriceCents / 100, watch.marketPriceCents === null ? "" : watch.marketPriceCents / 100, watch.marketLowCents === null ? "" : watch.marketLowCents / 100, watch.marketHighCents === null ? "" : watch.marketHighCents / 100, watch.marketConfidence, watch.marketSampleSize || "", watch.marketProvider === "the-watch-info" ? "The Watch Info" : watch.marketProvider === "manual" ? "Manual" : "", watch.purchasePriceCents === null ? "" : watch.purchasePriceCents / 100, watch.currency, watch.movement, watch.caseSize, watch.caseMaterial, watch.dialColor, watch.waterResistance, watch.tags, watch.purchaseDate, watch.lastServiceDate, watch.nextServiceDate, watch.wearCount, watch.listingUrl, watch.imageUrl, watch.notes]);
     downloadFile(`crownlog-watches-${date}.csv`, [headings, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv;charset=utf-8");
   }
 
@@ -673,6 +750,8 @@ export default function WatchCollection() {
           purchaseDate: String(formData.get("purchaseDate") || ""),
           lastServiceDate: String(formData.get("lastServiceDate") || ""),
           nextServiceDate: String(formData.get("nextServiceDate") || ""),
+          manualMarketPrice: String(formData.get("manualMarketPrice") || ""),
+          marketCurrency: priceCurrency,
         }),
       });
       const data = (await response.json()) as { watch?: Watch; error?: string };
@@ -712,6 +791,101 @@ export default function WatchCollection() {
       setPriceCheckMessage(checkError instanceof Error ? checkError.message : "Couldn’t check that listing.");
     } finally {
       setCheckingPrice(false);
+    }
+  }
+
+  async function findMarketMatches() {
+    if (!priceWatch || !priceFormRef.current) return;
+    const formData = new FormData(priceFormRef.current);
+    setCheckingMarket(true);
+    setMarketMessage("");
+    setMarketMatches([]);
+    try {
+      const response = await fetch("/api/market/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          brand: String(formData.get("brand") || ""),
+          model: String(formData.get("model") || ""),
+          reference: String(formData.get("reference") || ""),
+        }),
+      });
+      const data = await response.json() as { matches?: MarketMatch[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "Couldn’t search market data.");
+      const matches = data.matches || [];
+      setMarketMatches(matches);
+      setMarketMessage(matches.length ? "Choose the exact model or closest match." : "The Watch Info does not currently cover this model. You can save a manual estimate instead.");
+    } catch (marketError) {
+      setMarketMessage(marketError instanceof Error ? marketError.message : "Couldn’t search market data.");
+    } finally {
+      setCheckingMarket(false);
+    }
+  }
+
+  async function confirmMarketMatch(match: MarketMatch) {
+    if (!priceWatch) return;
+    setCheckingMarket(true);
+    setMarketMessage(`Loading ${match.name} market data…`);
+    try {
+      const response = await fetch("/api/market", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "confirm", id: priceWatch.id, marketModelId: match.id }),
+      });
+      const data = await response.json() as { watch?: Watch; error?: string };
+      if (!response.ok || !data.watch) throw new Error(data.error || "Couldn’t save that market match.");
+      setWatches((current) => current.map((watch) => watch.id === data.watch!.id ? data.watch! : watch));
+      setPriceWatch(data.watch);
+      setMarketMatches([]);
+      setMarketMessage("Market match confirmed.");
+    } catch (marketError) {
+      setMarketMessage(marketError instanceof Error ? marketError.message : "Couldn’t save that market match.");
+    } finally {
+      setCheckingMarket(false);
+    }
+  }
+
+  async function refreshMarketEstimate(force = true) {
+    if (!priceWatch) return;
+    setCheckingMarket(true);
+    setMarketMessage("");
+    try {
+      const response = await fetch("/api/market", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "refresh", id: priceWatch.id, force }),
+      });
+      const data = await response.json() as { watch?: Watch; cached?: boolean; error?: string };
+      if (!response.ok || !data.watch) throw new Error(data.error || "Couldn’t refresh the market estimate.");
+      setWatches((current) => current.map((watch) => watch.id === data.watch!.id ? data.watch! : watch));
+      setPriceWatch(data.watch);
+      setMarketMessage(data.cached ? "The saved estimate is less than 24 hours old." : "Market estimate updated.");
+    } catch (marketError) {
+      setMarketMessage(marketError instanceof Error ? marketError.message : "Couldn’t refresh the market estimate.");
+    } finally {
+      setCheckingMarket(false);
+    }
+  }
+
+  async function clearMarketMatch() {
+    if (!priceWatch) return;
+    setCheckingMarket(true);
+    try {
+      const response = await fetch("/api/market", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "clear", id: priceWatch.id }),
+      });
+      const data = await response.json() as { watch?: Watch; error?: string };
+      if (!response.ok || !data.watch) throw new Error(data.error || "Couldn’t clear that market match.");
+      setWatches((current) => current.map((watch) => watch.id === data.watch!.id ? data.watch! : watch));
+      setPriceWatch(data.watch);
+      setMarketMatches([]);
+      setMarketMessage("Market match cleared.");
+    } catch (marketError) {
+      setMarketMessage(marketError instanceof Error ? marketError.message : "Couldn’t clear that market match.");
+    } finally {
+      setCheckingMarket(false);
     }
   }
 
@@ -777,7 +951,7 @@ export default function WatchCollection() {
         </div>
         <div className="ledger-grid">
           <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded</span></article>
-          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Based on the latest saved prices</span></article>
+          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
           <article className={stats.serviceDue ? "needs-attention" : ""}><small>Service desk</small><strong>{stats.serviceDue ? `${stats.serviceDue} due` : "All clear"}</strong><span>Upcoming service dates stay in Details</span></article>
           <article><small>Wrist time</small><strong>{stats.wears} wears</strong><span>Log a wear from an owned watch’s Details</span></article>
         </div>
@@ -851,7 +1025,7 @@ export default function WatchCollection() {
             <h2 id="collection-heading">The collection</h2>
           </div>
           <div className="collection-actions">
-            <button className="outline-button refresh-button" disabled={checkingAllPrices} onClick={() => void checkAllPrices()}><span aria-hidden="true">↗</span> {checkingAllPrices ? "Checking…" : "Refresh prices"}</button>
+            <button className="outline-button refresh-button" disabled={checkingAllPrices} onClick={() => void checkAllPrices()} aria-label={checkingAllPrices ? "Refreshing all prices" : "Refresh all listing prices and market estimates"} title="Refresh all listing prices and market estimates"><span aria-hidden="true">↻</span> {checkingAllPrices ? "Checking…" : "Refresh all prices"}</button>
             <button className="outline-button roulette-button" onClick={spinRoulette}><span aria-hidden="true">↻</span> Watch roulette</button>
             <button className="add-button add-button--desktop" onClick={openWatchForm}>
               <span aria-hidden="true">+</span> Add watch
@@ -894,6 +1068,7 @@ export default function WatchCollection() {
           <div className="view-toggle" aria-label="Display watches">
             <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
             <button className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
+            <button className={viewMode === "table" ? "active" : ""} onClick={() => setViewMode("table")} aria-pressed={viewMode === "table"} title="Compact table view"><span aria-hidden="true">▤</span> Table</button>
           </div>
         </div>
 
@@ -913,6 +1088,9 @@ export default function WatchCollection() {
           </div>
         ) : Object.keys(groupedWatches).length ? (
           <div className={`brand-groups is-${viewMode}`}>
+            <div className="watch-table-header" aria-hidden="true">
+              <span>Image</span><span>Brand</span><span>Model / reference</span><span>Listing price</span><span>Market estimate</span><span>Last checked</span><span>Status</span><span />
+            </div>
             {Object.entries(groupedWatches).map(([brand, brandWatches]) => (
               <section className="brand-group" key={brand} aria-labelledby={`brand-${brand}`}>
                 <div className="brand-heading">
@@ -934,9 +1112,11 @@ export default function WatchCollection() {
                           <img src={watch.imageUrl} alt={`${watch.brand} ${watch.model}`} loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                         )}
                       </div>
+                      <div className="watch-table-brand">{watch.brand}</div>
                       <div className="watch-main">
                         <span className="watch-grid-brand">{watch.brand}</span>
-                        <h4>{watch.model}</h4>
+                        <h4><button className="watch-title-button" onClick={() => openPriceWatch(watch)}>{watch.model}</button></h4>
+                        <span className="watch-table-reference">{watch.reference ? `Ref. ${watch.reference}` : "No reference"}</span>
                         <div className="watch-meta">
                           {watch.reference && <span>REF. {watch.reference}</span>}
                           <button className="grail-score" onClick={() => void cycleGrailScore(watch)} aria-label={`Grail score ${watch.grailScore} out of 5. Click to increase.`}>
@@ -971,8 +1151,19 @@ export default function WatchCollection() {
                             {sparkHeights(watch.priceHistory).map((point) => <i key={point.id} style={{ height: `${point.height}%` }} />)}
                           </div>
                         )}
+                        {watch.marketPriceCents !== null && (
+                          <div className="card-market-estimate">
+                            <span>Market {formatPrice(watch.marketPriceCents, watch.marketCurrency)}</span>
+                            {watch.marketProvider === "the-watch-info" ? <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">The Watch Info</a> : <small>Manual estimate</small>}
+                          </div>
+                        )}
                         <button onClick={() => openPriceWatch(watch)}>Details</button>
                       </div>
+                      <div className="watch-table-market">
+                        <strong>{formatPrice(watch.marketPriceCents, watch.marketCurrency)}</strong>
+                        {watch.marketProvider === "the-watch-info" ? <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">The Watch Info</a> : <small>{watch.marketProvider === "manual" ? "Manual" : "Not tracked"}</small>}
+                      </div>
+                      <div className="watch-table-checked">{latestPriceCheck(watch) ? new Date(latestPriceCheck(watch)!).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Never"}</div>
                       <button
                         className={`status-toggle ${watch.status === "owned" ? "is-owned" : ""}`}
                         onClick={() => void toggleStatus(watch)}
@@ -1043,7 +1234,7 @@ export default function WatchCollection() {
               <article><span>01</span><h3>Add a watch</h3><p>Choose <strong>Add watch</strong>. Paste a product URL and use <strong>Fill details</strong>, or complete the fields manually.</p></article>
               <article><span>02</span><h3>Brands</h3><p>Use <strong>Follow brand</strong>. Click any saved brand card to edit its website, notes, or type.</p></article>
               <article><span>03</span><h3>Edit & catalog</h3><p>Open <strong>Details</strong> to edit a watch, add its specifications, tags, purchase record, and service dates.</p></article>
-              <article><span>04</span><h3>Prices</h3><p>Set targets in <strong>Details</strong>, check one listing there, or use <strong>Refresh prices</strong> for every linked watch.</p></article>
+              <article><span>04</span><h3>Prices</h3><p>Track an exact listing, confirm a free market estimate in <strong>Details</strong>, or use <strong>Refresh all prices</strong> for both.</p></article>
               <article><span>05</span><h3>Find things</h3><p>Search notes and tags, filter deals or service-due pieces, and sort by grail, price, or date.</p></article>
               <article><span>06</span><h3>Compare</h3><p>Choose <strong>+ Compare</strong> on two or three watches to line up their specs, prices, and scores.</p></article>
               <article><span>07</span><h3>Collector ledger</h3><p>See purchase value, current value, service reminders, and wrist time. Log wears inside an owned watch’s Details.</p></article>
@@ -1124,6 +1315,7 @@ export default function WatchCollection() {
                   <dl>
                     <div><dt>Grail</dt><dd>{watch.grailScore}/5</dd></div>
                     <div><dt>Price</dt><dd>{formatPrice(watch.currentPriceCents, watch.currency)}</dd></div>
+                    <div><dt>Market estimate</dt><dd>{formatPrice(watch.marketPriceCents, watch.marketCurrency)}{watch.marketProvider === "the-watch-info" && <a className="compare-source" href="https://thewatchinfo.com" target="_blank" rel="noreferrer">The Watch Info</a>}</dd></div>
                     <div><dt>Target</dt><dd>{formatPrice(watch.targetPriceCents, watch.currency)}</dd></div>
                     <div><dt>Movement</dt><dd>{watch.movement || "—"}</dd></div>
                     <div><dt>Case</dt><dd>{watch.caseSize || "—"}</dd></div>
@@ -1370,6 +1562,43 @@ export default function WatchCollection() {
                   </div>
                 </div>
               )}
+              <div className="detail-section-heading"><span>MARKET ESTIMATE</span></div>
+              {priceWatch.marketPriceCents !== null && (
+                <div className="market-estimate-panel">
+                  <div>
+                    <span>{priceWatch.marketProvider === "manual" ? "Manual estimate" : priceWatch.marketModelName}</span>
+                    <strong>{formatPrice(priceWatch.marketPriceCents, priceWatch.marketCurrency)}</strong>
+                    {priceWatch.marketLowCents !== null && priceWatch.marketHighCents !== null && <small>Typical range {formatPrice(priceWatch.marketLowCents, priceWatch.marketCurrency)}–{formatPrice(priceWatch.marketHighCents, priceWatch.marketCurrency)}</small>}
+                  </div>
+                  <div className="market-estimate-meta">
+                    <span className={`confidence-badge is-${priceWatch.marketConfidence || "low"}`}>{priceWatch.marketConfidence === "manual" ? "Manual" : `${priceWatch.marketConfidence || "Low"} confidence`}</span>
+                    {priceWatch.marketSampleSize > 0 && <small>{priceWatch.marketSampleSize} market {priceWatch.marketSampleSize === 1 ? "sample" : "samples"}</small>}
+                    {priceWatch.marketCheckedAt && <small>Updated {new Date(priceWatch.marketCheckedAt).toLocaleDateString()}</small>}
+                    {priceWatch.marketProvider === "the-watch-info" && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Market data from The Watch Info ↗</a>}
+                  </div>
+                </div>
+              )}
+              <div className="market-actions">
+                <button type="button" className="outline-button" disabled={checkingMarket} onClick={() => void findMarketMatches()}>{checkingMarket ? "Working…" : priceWatch.marketProvider === "the-watch-info" ? "Change market match" : "Find market estimate"}</button>
+                {priceWatch.marketProvider === "the-watch-info" && <button type="button" className="text-button" disabled={checkingMarket} onClick={() => void refreshMarketEstimate(true)}>Refresh estimate</button>}
+                {priceWatch.marketProvider && <button type="button" className="text-button is-danger" disabled={checkingMarket} onClick={() => void clearMarketMatch()}>Clear estimate</button>}
+              </div>
+              {marketMessage && <div className="market-message" role="status">{marketMessage}</div>}
+              {marketMatches.length > 0 && (
+                <div className="market-match-list" aria-label="Possible market matches">
+                  {marketMatches.map((match) => (
+                    <button type="button" key={match.id} disabled={checkingMarket} onClick={() => void confirmMarketMatch(match)}>
+                      <span><strong>{match.name}</strong><small>{match.brand}{match.reference ? ` · Ref. ${match.reference}` : ""}</small></span>
+                      <span><strong>{formatPrice(match.averagePriceCents, "USD")}</strong><small>{match.sampleSize} {match.sampleSize === 1 ? "listing" : "listings"}</small></span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <label className="manual-market-field">
+                <span>Manual market estimate</span>
+                <div className="currency-input"><span>{currencyMark(priceCurrency)}</span><input name="manualMarketPrice" inputMode="decimal" defaultValue={priceWatch.marketProvider === "manual" && priceWatch.marketPriceCents !== null ? priceWatch.marketPriceCents / 100 : ""} placeholder="Use when no provider match exists" /></div>
+                <small>Saving a number here replaces an automatic estimate. Clear it and save to remove a manual estimate.</small>
+              </label>
               <div className="detail-section-heading"><span>SPECIFICATIONS</span></div>
               <div className="field-row">
                 <label><span>Movement</span><input name="movement" defaultValue={priceWatch.movement} placeholder="e.g. Sellita SW200-1" /></label>

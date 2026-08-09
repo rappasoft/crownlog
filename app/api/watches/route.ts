@@ -167,6 +167,48 @@ export async function PATCH(request: Request) {
     if ("purchaseDate" in payload) updates.purchaseDate = safeDate(payload.purchaseDate);
     if ("lastServiceDate" in payload) updates.lastServiceDate = safeDate(payload.lastServiceDate);
     if ("nextServiceDate" in payload) updates.nextServiceDate = safeDate(payload.nextServiceDate);
+    if ("manualMarketPrice" in payload) {
+      const manualMarketPriceCents = priceInCents(payload.manualMarketPrice);
+      if (manualMarketPriceCents !== null) {
+        updates.marketProvider = "manual";
+        updates.marketModelId = "";
+        updates.marketModelName = "Manual estimate";
+        updates.marketPriceCents = manualMarketPriceCents;
+        updates.marketLowCents = null;
+        updates.marketHighCents = null;
+        updates.marketSampleSize = 0;
+        updates.marketConfidence = "manual";
+        updates.marketCurrency = safeCurrency(payload.marketCurrency || before.marketCurrency || before.currency);
+        updates.marketCheckedAt = new Date().toISOString();
+        updates.marketCheckStatus = "Manual market estimate";
+      } else if (before.marketProvider === "manual") {
+        updates.marketProvider = "";
+        updates.marketModelId = "";
+        updates.marketModelName = "";
+        updates.marketPriceCents = null;
+        updates.marketLowCents = null;
+        updates.marketHighCents = null;
+        updates.marketSampleSize = 0;
+        updates.marketConfidence = "";
+        updates.marketCheckedAt = null;
+        updates.marketCheckStatus = "";
+      }
+    }
+    const identityChanged = (typeof updates.brand === "string" && updates.brand !== before.brand)
+      || (typeof updates.model === "string" && updates.model !== before.model)
+      || (typeof updates.reference === "string" && updates.reference !== before.reference);
+    if (identityChanged && before.marketProvider === "the-watch-info" && !("manualMarketPrice" in payload && priceInCents(payload.manualMarketPrice) !== null)) {
+      updates.marketProvider = "";
+      updates.marketModelId = "";
+      updates.marketModelName = "";
+      updates.marketPriceCents = null;
+      updates.marketLowCents = null;
+      updates.marketHighCents = null;
+      updates.marketSampleSize = 0;
+      updates.marketConfidence = "";
+      updates.marketCheckedAt = null;
+      updates.marketCheckStatus = "Watch details changed; confirm a new market match.";
+    }
     if (payload.recordWear === true) {
       updates.wearCount = before.wearCount + 1;
       updates.lastWornAt = new Date().toISOString();

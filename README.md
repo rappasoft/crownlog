@@ -57,6 +57,8 @@ The runtime-managed database file is stored under `data/v3/d1/miniflare-D1Databa
 
 The app does not use browser `localStorage`, does not need MySQL, and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
 
+When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
+
 A fresh Git clone starts with a completely empty database: no watches, followed brands, prices, or personal notes are bundled with the source. Crownlog creates the schema automatically the first time it starts. Existing installations keep their current data when the source code is updated.
 
 For a portable copy, use **Vault → Download JSON** inside Crownlog. Keep that file somewhere outside the project as a backup.
@@ -99,10 +101,11 @@ Crownlog reads public product metadata such as JSON-LD and Open Graph tags. Some
 
 ### Watch cards
 
-Use the **List** and **Grid** buttons beside the sorting menu to switch between the grouped ledger view and a visual card gallery.
+Use the **List**, **Grid**, and **Table** buttons beside the sorting menu to switch between the grouped ledger, visual card gallery, and compact spreadsheet-style collection. Table view aligns brand, model/reference, listing price, market estimate, last check date, and status into scan-friendly columns.
 
 Each watch card provides quick actions:
 
+- Select the watch title to open its full Details panel.
 - Select the grail dots to cycle from 1 to 5.
 - Choose **Wishlist/Purchased** to change collection status.
 - Choose **Details** to edit the full record.
@@ -135,9 +138,24 @@ For a single watch:
 3. Set a target price if wanted.
 4. Choose **Check listing now**.
 
-For every linked watch, choose **Refresh prices** above the collection.
+For every linked watch, choose **Refresh all prices** above the collection.
 
-Crownlog checks listings sequentially, reads public structured pricing, updates the current price and currency, and stores a new history point when the price changes. It does not run scheduled background checks and does not send sale notifications. Stores that block automated requests can still be updated manually.
+Crownlog checks listings sequentially, reads public structured pricing, updates the current price and currency, and stores a new history point when the price changes. It does not run scheduled background checks while the app is closed and does not send sale notifications. Stores that block automated requests can still be updated manually.
+
+### Free market estimates
+
+Crownlog can also retrieve an aggregated resale-market estimate from [The Watch Info](https://thewatchinfo.com). This remains separate from the exact retailer or listing price.
+
+1. Open a watch’s **Details**.
+2. Under **Market estimate**, choose **Find market estimate**.
+3. Review the possible matches and select the exact model or closest appropriate match.
+4. Crownlog saves the provider model ID, median estimate, typical range, sample size, confidence, and update date in local SQLite.
+
+Confirmed estimates older than 24 hours refresh once when Crownlog starts. **Refresh all prices** also refreshes confirmed market matches. Normal automatic checks reuse results until they are 24 hours old; the explicit refresh control can request a newer result.
+
+Confidence labels are deliberately conservative: high confidence requires at least ten samples and an exact reference match, medium requires at least five samples, and smaller or less-exact datasets are marked low confidence. Market estimates are informational asking-price aggregates, not guaranteed sale values or financial advice.
+
+If no provider match exists, enter a **Manual market estimate** in Details. Market-data attribution remains visible anywhere Crownlog displays provider-derived values. The provider API is currently free but is external to Crownlog and may change independently.
 
 ### Collection ledger
 
@@ -241,6 +259,10 @@ Another Crownlog development server may already be running. Check the existing T
 ### A watch image is missing
 
 Open **Details** and replace its image with a direct public HTTPS image URL. Image hosts that require cookies or block hotlinking will not display reliably.
+
+### No market match is found
+
+Crownlog automatically tries the reference, full model name, a cleaned model name, and shorter collection-name searches. If results still do not appear, The Watch Info does not currently cover that model. This is common for small microbrands and newly released watches. Save a manual market estimate instead; do not select a merely similar watch as an exact valuation.
 
 ## Developer commands
 

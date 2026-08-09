@@ -50,6 +50,13 @@
       "when": 1786290381415,
       "tag": "0006_legal_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1786300368347,
+      "tag": "0007_rapid_amazoness",
+      "breakpoints": true
     }
   ]
 }

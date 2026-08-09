@@ -52,6 +52,17 @@ export async function ensureDatabase() {
       last_worn_at TEXT,
       last_price_check_at TEXT,
       last_price_check_status TEXT DEFAULT '' NOT NULL,
+      market_provider TEXT DEFAULT '' NOT NULL,
+      market_model_id TEXT DEFAULT '' NOT NULL,
+      market_model_name TEXT DEFAULT '' NOT NULL,
+      market_price_cents INTEGER,
+      market_low_cents INTEGER,
+      market_high_cents INTEGER,
+      market_sample_size INTEGER DEFAULT 0 NOT NULL,
+      market_confidence TEXT DEFAULT '' NOT NULL,
+      market_currency TEXT DEFAULT 'USD' NOT NULL,
+      market_checked_at TEXT,
+      market_check_status TEXT DEFAULT '' NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
     )`),
@@ -89,6 +100,17 @@ export async function ensureDatabase() {
   if (!names.has("last_worn_at")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN last_worn_at TEXT"));
   if (!names.has("last_price_check_at")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN last_price_check_at TEXT"));
   if (!names.has("last_price_check_status")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN last_price_check_status TEXT DEFAULT '' NOT NULL"));
+  if (!names.has("market_provider")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_provider TEXT DEFAULT '' NOT NULL"));
+  if (!names.has("market_model_id")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_model_id TEXT DEFAULT '' NOT NULL"));
+  if (!names.has("market_model_name")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_model_name TEXT DEFAULT '' NOT NULL"));
+  if (!names.has("market_price_cents")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_price_cents INTEGER"));
+  if (!names.has("market_low_cents")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_low_cents INTEGER"));
+  if (!names.has("market_high_cents")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_high_cents INTEGER"));
+  if (!names.has("market_sample_size")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_sample_size INTEGER DEFAULT 0 NOT NULL"));
+  if (!names.has("market_confidence")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_confidence TEXT DEFAULT '' NOT NULL"));
+  if (!names.has("market_currency")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_currency TEXT DEFAULT 'USD' NOT NULL"));
+  if (!names.has("market_checked_at")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_checked_at TEXT"));
+  if (!names.has("market_check_status")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN market_check_status TEXT DEFAULT '' NOT NULL"));
   if (upgrades.length) await env.DB.batch(upgrades);
 
   const brandColumns = await env.DB.prepare("PRAGMA table_info(brands)").all<{ name: string }>();
