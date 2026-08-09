@@ -1,0 +1,69 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+test("server-renders the Crownlog watch index", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+
+  const response = await worker.fetch(
+    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /<title>Crownlog — Personal Watch Index<\/title>/i);
+  assert.match(html, /Watches I’m/);
+  assert.match(html, /The collection/);
+  assert.match(html, /Collection at a glance/);
+  assert.match(html, />Vault</);
+  assert.doesNotMatch(html, /codex-preview/);
+});
+
+test("imports structured watch details from a product URL", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("import-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    if (String(input) === "https://example-watch.test/products/moon-phase") {
+      return new Response(`<!doctype html><script type="application/ld+json">${JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: "Moon Phase",
+        brand: { "@type": "Brand", name: "Example Watch Co." },
+        sku: "MW-42",
+        image: "https://cdn.example-watch.test/moon-phase.jpg",
+        offers: { "@type": "Offer", price: "1299.00", priceCurrency: "USD" },
+      })}</script>`, { headers: { "content-type": "text/html" } });
+    }
+    return originalFetch(input, init);
+  };
+
+  try {
+    const response = await worker.fetch(
+      new Request("http://localhost/api/import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ listingUrl: "https://example-watch.test/products/moon-phase" }),
+      }),
+      { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+      { waitUntil() {}, passThroughOnException() {} },
+    );
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.deepEqual(data.product, {
+      name: "Moon Phase",
+      brand: "Example Watch Co.",
+      reference: "MW-42",
+      priceCents: 129900,
+      currency: "USD",
+      listingUrl: "https://example-watch.test/products/moon-phase",
+      imageUrl: "https://cdn.example-watch.test/moon-phase.jpg",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

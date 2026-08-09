@@ -1,0 +1,1 @@
+ALTER TABLE `watches` ADD `image_url` text DEFAULT '' NOT NULL;

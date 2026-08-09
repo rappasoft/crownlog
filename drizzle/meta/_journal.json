@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1786285505166,
+      "tag": "0000_foamy_hydra",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786285621218,
+      "tag": "0001_tan_kree",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786285833046,
+      "tag": "0002_careful_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786286319344,
+      "tag": "0003_tricky_scream",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786287657748,
+      "tag": "0004_wet_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1786289678333,
+      "tag": "0005_yielding_stingray",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786290381415,
+      "tag": "0006_legal_master_chief",
+      "breakpoints": true
+    }
+  ]
+}
