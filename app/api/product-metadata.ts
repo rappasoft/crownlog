@@ -2,6 +2,8 @@ export type ProductMetadata = {
   name: string;
   brand: string;
   reference: string;
+  category?: string;
+  description?: string;
   priceCents: number | null;
   currency: string;
   listingUrl: string;
@@ -154,10 +156,14 @@ export function extractProductMetadata(html: string, listingUrl: string): Produc
       const product = findProduct(parsed);
       if (!product) continue;
       const price = priceFromOffer(product.offers, safeCurrency(product.priceCurrency));
+      const category = clean(product.category ?? product.additionalType, 120);
+      const description = clean(product.description, 1000);
       return {
         name: clean(product.name, 120),
         brand: brandName(product.brand ?? product.manufacturer),
         reference: clean(product.sku ?? product.mpn ?? product.productID, 100),
+        ...(category ? { category } : {}),
+        ...(description ? { description } : {}),
         priceCents: price?.priceCents ?? null,
         currency: price?.currency ?? safeCurrency(product.priceCurrency),
         listingUrl,
@@ -170,10 +176,14 @@ export function extractProductMetadata(html: string, listingUrl: string): Produc
 
   const rawPrice = metaContent(html, "product:price:amount") || metaContent(html, "og:price:amount") || metaContent(html, "price");
   const rawCurrency = metaContent(html, "product:price:currency") || metaContent(html, "og:price:currency") || metaContent(html, "priceCurrency");
+  const category = metaContent(html, "product:category") || metaContent(html, "category");
+  const description = metaContent(html, "og:description", 1000) || metaContent(html, "description", 1000);
   return {
     name: metaContent(html, "og:title") || clean(html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1], 120),
     brand: metaContent(html, "product:brand") || metaContent(html, "brand"),
     reference: metaContent(html, "product:retailer_item_id") || metaContent(html, "sku"),
+    ...(category ? { category } : {}),
+    ...(description ? { description } : {}),
     priceCents: amountInCents(rawPrice),
     currency: safeCurrency(rawCurrency),
     listingUrl,

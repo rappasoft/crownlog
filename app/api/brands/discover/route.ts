@@ -3,7 +3,7 @@ import { ensureDatabase, getDb } from "../../../../db";
 import { brandDiscoveries, brands, priceHistory, watches } from "../../../../db/schema";
 import { canonicalListingUrl } from "../../../listing-url";
 import { extractProductMetadata, fetchProductPage } from "../../product-metadata";
-import { discoverProductUrls } from "./discovery";
+import { discoverProductUrls, isLikelyWatchProduct } from "./discovery";
 
 function clean(value: unknown, max = 160) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       }));
       scanned += batch.length;
       for (const product of products) {
-        if (!product?.name || (!product.imageUrl && product.priceCents === null && !product.reference)) continue;
+        if (!product?.name || !isLikelyWatchProduct(product) || (!product.imageUrl && product.priceCents === null && !product.reference)) continue;
         const canonicalUrl = canonicalListingUrl(product.listingUrl);
         if (!canonicalUrl || seenUrls.has(canonicalUrl)) continue;
         await db.insert(brandDiscoveries).values({

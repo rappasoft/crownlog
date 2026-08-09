@@ -88,7 +88,7 @@ Each followed brand has a dedicated page. Open a brand card from the main direct
 
 1. Save the brand’s official public website if it does not already have one.
 2. Choose **Fetch new watches**.
-3. Crownlog reads public sitemap entries and a small random batch of likely product pages.
+3. Crownlog reads public sitemap entries and a small random batch of likely product pages, filtering out accessories, jewelry, gift cards, and other non-watch products.
 4. Review the imported image, model, reference, price, and original product link in the **Discovery Tray**.
 5. Choose **Keep + wishlist** to create a normal wishlist watch, or **Dismiss** to hide that product permanently.
 
