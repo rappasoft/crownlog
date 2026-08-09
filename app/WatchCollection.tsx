@@ -65,6 +65,7 @@ type ImportedProduct = {
 
 type Filter = "all" | WatchStatus | "deals" | "service";
 type SortMode = "brand" | "grail" | "price-low" | "price-high" | "newest";
+type ViewMode = "list" | "grid";
 
 const FILTERS: { label: string; value: Filter }[] = [
   { label: "All watches", value: "all" },
@@ -157,6 +158,7 @@ export default function WatchCollection() {
   const [showCompare, setShowCompare] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("brand");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [checkingAllPrices, setCheckingAllPrices] = useState(false);
   const [bulkPriceMessage, setBulkPriceMessage] = useState("");
   const [restoringBackup, setRestoringBackup] = useState(false);
@@ -889,6 +891,10 @@ export default function WatchCollection() {
               <option value="newest">Sort: Newest</option>
             </select>
           </label>
+          <div className="view-toggle" aria-label="Display watches">
+            <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
+            <button className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
+          </div>
         </div>
 
         {bulkPriceMessage && <div className="bulk-price-message" role="status"><span>{bulkPriceMessage}</span><button onClick={() => setBulkPriceMessage("")} aria-label="Dismiss price update">×</button></div>}
@@ -906,7 +912,7 @@ export default function WatchCollection() {
             Opening the watch box…
           </div>
         ) : Object.keys(groupedWatches).length ? (
-          <div className="brand-groups">
+          <div className={`brand-groups is-${viewMode}`}>
             {Object.entries(groupedWatches).map(([brand, brandWatches]) => (
               <section className="brand-group" key={brand} aria-labelledby={`brand-${brand}`}>
                 <div className="brand-heading">
@@ -929,6 +935,7 @@ export default function WatchCollection() {
                         )}
                       </div>
                       <div className="watch-main">
+                        <span className="watch-grid-brand">{watch.brand}</span>
                         <h4>{watch.model}</h4>
                         <div className="watch-meta">
                           {watch.reference && <span>REF. {watch.reference}</span>}

@@ -99,6 +99,8 @@ Crownlog reads public product metadata such as JSON-LD and Open Graph tags. Some
 
 ### Watch cards
 
+Use the **List** and **Grid** buttons beside the sorting menu to switch between the grouped ledger view and a visual card gallery.
+
 Each watch card provides quick actions:
 
 - Select the grail dots to cycle from 1 to 5.
