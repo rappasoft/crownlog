@@ -1,7 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-html-link-for-pages -- Full document navigation avoids Vinext beta RSC blank screens. */
+
 import Image from "next/image";
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Brand = {
@@ -163,16 +164,16 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
   return (
     <main className="discovery-shell">
       <header className="discovery-topbar">
-        <Link className="brand-lockup" href="/" aria-label="Back to Crownlog">
+        <a className="brand-lockup" href="/" aria-label="Back to Crownlog">
           <Image className="brand-lockup-image" src="/og.png" alt="Crownlog — Personal Watch Index" width={210} height={110} priority />
-        </Link>
-        <Link className="outline-button discovery-back" href="/">← Collection</Link>
+        </a>
+        <a className="outline-button discovery-back" href="/">← Collection</a>
       </header>
 
       {loading ? (
         <section className="discovery-loading"><span className="loading-dial" />Opening the discovery tray…</section>
       ) : !state ? (
-        <section className="discovery-loading"><h1>Brand unavailable</h1><p>{error}</p><Link href="/">Return to the collection</Link></section>
+        <section className="discovery-loading"><h1>Brand unavailable</h1><p>{error}</p><a href="/">Return to the collection</a></section>
       ) : (
         <>
           <section className="discovery-hero">
@@ -217,10 +218,10 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
           </section>
 
           {state.savedWatches.length > 0 && (
-            <section className="brand-saved-watches" aria-labelledby="brand-saved-title"><div className="discovery-heading"><div><span className="section-number">SAVED</span><h2 id="brand-saved-title">Already in Crownlog</h2></div></div><div className="brand-saved-grid">{state.savedWatches.map((watch) => <Link href="/" className="brand-saved-card" key={watch.id}><div>{watch.imageUrl && (
+            <section className="brand-saved-watches" aria-labelledby="brand-saved-title"><div className="discovery-heading"><div><span className="section-number">SAVED</span><h2 id="brand-saved-title">Already in Crownlog</h2></div></div><div className="brand-saved-grid">{state.savedWatches.map((watch) => <a href="/" className="brand-saved-card" key={watch.id}><div>{watch.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={watch.imageUrl} alt="" referrerPolicy="no-referrer" />
-            )}<span>{state.brand.name.charAt(0)}</span></div><small>{watch.status === "owned" ? "Purchased" : "Wishlist"}</small><strong>{watch.model}</strong><p>{formatPrice(watch.currentPriceCents, watch.currency)}</p></Link>)}</div></section>
+            )}<span>{state.brand.name.charAt(0)}</span></div><small>{watch.status === "owned" ? "Purchased" : "Wishlist"}</small><strong>{watch.model}</strong><p>{formatPrice(watch.currentPriceCents, watch.currency)}</p></a>)}</div></section>
           )}
         </>
       )}

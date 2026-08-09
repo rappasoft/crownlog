@@ -25,8 +25,29 @@ async function brandState(brandId: string) {
 export async function GET(request: Request) {
   try {
     const brandId = clean(new URL(request.url).searchParams.get("brandId"), 80);
-    if (!brandId) return Response.json({ error: "A brand is required." }, { status: 400 });
     await ensureDatabase();
+    if (!brandId) {
+      const db = getDb();
+      const discoveries = await db.select({
+        id: brandDiscoveries.id,
+        brandId: brandDiscoveries.brandId,
+        brandName: brands.name,
+        name: brandDiscoveries.name,
+        reference: brandDiscoveries.reference,
+        imageUrl: brandDiscoveries.imageUrl,
+        priceCents: brandDiscoveries.priceCents,
+        currency: brandDiscoveries.currency,
+        sourceUrl: brandDiscoveries.sourceUrl,
+        canonicalUrl: brandDiscoveries.canonicalUrl,
+        status: brandDiscoveries.status,
+        createdAt: brandDiscoveries.createdAt,
+        updatedAt: brandDiscoveries.updatedAt,
+      }).from(brandDiscoveries)
+        .innerJoin(brands, eq(brandDiscoveries.brandId, brands.id))
+        .where(eq(brandDiscoveries.status, "draft"))
+        .orderBy(desc(brandDiscoveries.createdAt));
+      return Response.json({ discoveries });
+    }
     const state = await brandState(brandId);
     if (!state) return Response.json({ error: "Brand not found." }, { status: 404 });
     return Response.json(state);

@@ -1,5 +1,27 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+
+test("brand navigation uses full document requests under Vinext", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+  const discovery = await readFile(new URL("../app/brands/BrandDiscovery.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(collection, /from ["']next\/link["']/);
+  assert.match(collection, /<a className="directory-card-link"/);
+  assert.doesNotMatch(discovery, /from ["']next\/link["']/);
+  assert.match(discovery, /<a className="outline-button discovery-back"/);
+});
+
+test("collection exposes fetched watches as reviewable drafts", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+  const discoveryRoute = await readFile(new URL("../app/api/brands/discover/route.ts", import.meta.url), "utf8");
+
+  assert.match(collection, /label: "Drafts", value: "drafts"/);
+  assert.match(collection, /fetch\("\/api\/brands\/discover", \{ cache: "no-store" \}\)/);
+  assert.match(collection, /Keep \+ wishlist/);
+  assert.match(discoveryRoute, /brandName: brands\.name/);
+  assert.match(discoveryRoute, /where\(eq\(brandDiscoveries\.status, "draft"\)\)/);
+});
 
 test("server-renders the Crownlog watch index", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);

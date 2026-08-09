@@ -94,6 +94,8 @@ Each followed brand has a dedicated page. Open a brand card from the main direct
 
 Draft, kept, and dismissed products are stored separately from the wishlist. Repeated fetches skip previously reviewed URLs and watches already saved in Crownlog. The brand page also shows watches from that brand already in the collection.
 
+All unreviewed discoveries also appear under **Collection → Drafts**. This gives you one inbox across every brand, with the same **Keep + wishlist** and **Dismiss** actions available on individual brand pages.
+
 Discovery depends on public retailer metadata. Some websites omit sitemaps, use unusual URLs, require JavaScript, or block automated requests. Crownlog reports those cases instead of adding incomplete records; individual sites may require future custom adapters.
 
 ### Adding a watch manually
@@ -126,7 +128,7 @@ Crownlog compares product links without common advertising trackers such as `utm
 
 ### Watch cards
 
-Use the **List**, **Grid**, and **Table** buttons beside the sorting menu to switch between the grouped ledger, visual card gallery, and compact spreadsheet-style collection. Crownlog remembers this display choice in the current browser. Table view aligns brand, model/reference, listing price, market estimate, last check date, and status into scan-friendly columns.
+Use the **List**, **Grid**, and **Table** buttons beside the sorting menu to switch between the grouped ledger, visual card gallery, and compact spreadsheet-style collection. Crownlog remembers this display choice in the current browser. Table view aligns brand, model/reference, listing price, market estimate, last check date, and status into scan-friendly columns. Choose **Drafts** to review fetched watches that have not reached the wishlist yet.
 
 Each watch card provides quick actions:
 

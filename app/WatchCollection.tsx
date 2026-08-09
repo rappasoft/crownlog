@@ -2,7 +2,6 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { canonicalListingUrl, duplicateListingGroups } from "./listing-url";
 
 type WatchStatus = "wishlist" | "owned";
@@ -66,6 +65,20 @@ type Brand = {
   createdAt: string;
 };
 
+type DiscoveryDraft = {
+  id: string;
+  brandId: string;
+  brandName: string;
+  name: string;
+  reference: string;
+  imageUrl: string;
+  priceCents: number | null;
+  currency: string;
+  sourceUrl: string;
+  status: "draft";
+  createdAt: string;
+};
+
 type ImportedProduct = {
   name: string;
   brand: string;
@@ -109,7 +122,7 @@ type MarketMatch = {
   averagePriceCents: number | null;
 };
 
-type Filter = "all" | WatchStatus | "deals" | "service" | "duplicates";
+type Filter = "all" | WatchStatus | "drafts" | "deals" | "service" | "duplicates";
 type SortMode = "brand" | "grail" | "price-low" | "price-high" | "newest";
 type ViewMode = "list" | "grid" | "table";
 
@@ -117,6 +130,7 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "All watches", value: "all" },
   { label: "Wishlist", value: "wishlist" },
   { label: "Purchased", value: "owned" },
+  { label: "Drafts", value: "drafts" },
   { label: "At target", value: "deals" },
   { label: "Service due", value: "service" },
   { label: "Duplicates", value: "duplicates" },
@@ -191,6 +205,7 @@ function downloadFile(name: string, contents: string, type: string) {
 export default function WatchCollection() {
   const [watches, setWatches] = useState<Watch[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [discoveries, setDiscoveries] = useState<DiscoveryDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -227,6 +242,8 @@ export default function WatchCollection() {
   const [restoreMessage, setRestoreMessage] = useState("");
   const [deleteWatch, setDeleteWatch] = useState<Watch | null>(null);
   const [deletingWatch, setDeletingWatch] = useState(false);
+  const [workingDraftId, setWorkingDraftId] = useState("");
+  const [draftMessage, setDraftMessage] = useState("");
   const watchFormRef = useRef<HTMLFormElement>(null);
   const priceFormRef = useRef<HTMLFormElement>(null);
   const autoMarketRefreshStarted = useRef(false);
@@ -234,16 +251,20 @@ export default function WatchCollection() {
   const loadData = useCallback(async () => {
     try {
       setError("");
-      const [watchResponse, brandResponse] = await Promise.all([
+      const [watchResponse, brandResponse, discoveryResponse] = await Promise.all([
         fetch("/api/watches", { cache: "no-store" }),
         fetch("/api/brands", { cache: "no-store" }),
+        fetch("/api/brands/discover", { cache: "no-store" }),
       ]);
       const watchData = (await watchResponse.json()) as { watches?: Watch[]; error?: string };
       const brandData = (await brandResponse.json()) as { brands?: Brand[]; error?: string };
+      const discoveryData = (await discoveryResponse.json()) as { discoveries?: DiscoveryDraft[]; error?: string };
       if (!watchResponse.ok) throw new Error(watchData.error || "Couldn’t load your watches.");
       if (!brandResponse.ok) throw new Error(brandData.error || "Couldn’t load your brands.");
+      if (!discoveryResponse.ok) throw new Error(discoveryData.error || "Couldn’t load your draft watches.");
       setWatches(watchData.watches || []);
       setBrands(brandData.brands || []);
+      setDiscoveries(discoveryData.discoveries || []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Couldn’t load your watches.");
     } finally {
@@ -356,6 +377,14 @@ export default function WatchCollection() {
   const duplicateWatchIds = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((watch) => watch.id))), [duplicateGroups]);
   const duplicateCount = duplicateWatchIds.size;
 
+  const visibleDrafts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return discoveries.filter((draft) => !normalizedQuery || [draft.brandName, draft.name, draft.reference]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedQuery));
+  }, [discoveries, query]);
+
   const visibleWatches = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return watches.filter((watch) => {
@@ -437,6 +466,30 @@ export default function WatchCollection() {
     setMarketMatches([]);
     setPriceCurrency(watch.currency || "USD");
     setPriceWatch(watch);
+  }
+
+  async function reviewDraft(draft: DiscoveryDraft, action: "keep" | "dismiss") {
+    setWorkingDraftId(draft.id);
+    setDraftMessage("");
+    setError("");
+    try {
+      const response = await fetch("/api/brands/discover", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: draft.id, action }),
+      });
+      const data = await response.json() as { alreadySaved?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error || "Couldn’t update this draft.");
+      setDiscoveries((current) => current.filter((item) => item.id !== draft.id));
+      if (action === "keep") await loadData();
+      setDraftMessage(action === "keep"
+        ? data.alreadySaved ? `${draft.name} was already saved, so the draft was cleared.` : `${draft.name} moved to your wishlist.`
+        : `${draft.name} dismissed. It won’t be suggested again.`);
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : "Couldn’t update this draft.");
+    } finally {
+      setWorkingDraftId("");
+    }
   }
 
   async function toggleStatus(watch: Watch) {
@@ -1081,7 +1134,7 @@ export default function WatchCollection() {
                   className="directory-card"
                   key={brand.id}
                 >
-                  <Link className="directory-card-link" href={`/brands/${encodeURIComponent(brand.id)}`} aria-label={`Open ${brand.name} discovery page`} />
+                  <a className="directory-card-link" href={`/brands/${encodeURIComponent(brand.id)}`} aria-label={`Open ${brand.name} discovery page`} />
                   <button className="directory-card-edit" onClick={() => openBrandForm(brand)} aria-label={`Edit ${brand.name}`} title="Edit brand">✎</button>
                   <div className="directory-monogram" aria-hidden="true">
                     <span>{brand.name.charAt(0)}</span>
@@ -1137,14 +1190,14 @@ export default function WatchCollection() {
           </div>
         </div>
 
-        <div className="controls">
+        <div className={`controls ${filter === "drafts" ? "is-drafts" : ""}`}>
           <label className="search-control">
             <span aria-hidden="true">⌕</span>
             <span className="sr-only">Search watches</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search brand, model, or reference"
+              placeholder={filter === "drafts" ? "Search draft brand, model, or reference" : "Search brand, model, or reference"}
             />
           </label>
           <div className="filter-tabs" aria-label="Filter watches">
@@ -1155,28 +1208,33 @@ export default function WatchCollection() {
                 onClick={() => setFilter(item.value)}
                 aria-pressed={filter === item.value}
               >
-                {item.label}
+                {item.value === "drafts" ? `${item.label} ${discoveries.length}` : item.label}
               </button>
             ))}
           </div>
-          <label className="sort-control">
-            <span className="sr-only">Sort watches</span>
-            <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
-              <option value="brand">Sort: Brand</option>
-              <option value="grail">Sort: Grail score</option>
-              <option value="price-low">Sort: Price low</option>
-              <option value="price-high">Sort: Price high</option>
-              <option value="newest">Sort: Newest</option>
-            </select>
-          </label>
-          <div className="view-toggle" aria-label="Display watches">
-            <button className={viewMode === "list" ? "active" : ""} onClick={() => chooseViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
-            <button className={viewMode === "grid" ? "active" : ""} onClick={() => chooseViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
-            <button className={viewMode === "table" ? "active" : ""} onClick={() => chooseViewMode("table")} aria-pressed={viewMode === "table"} title="Compact table view"><span aria-hidden="true">▤</span> Table</button>
-          </div>
+          {filter !== "drafts" && (
+            <>
+              <label className="sort-control">
+                <span className="sr-only">Sort watches</span>
+                <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                  <option value="brand">Sort: Brand</option>
+                  <option value="grail">Sort: Grail score</option>
+                  <option value="price-low">Sort: Price low</option>
+                  <option value="price-high">Sort: Price high</option>
+                  <option value="newest">Sort: Newest</option>
+                </select>
+              </label>
+              <div className="view-toggle" aria-label="Display watches">
+                <button className={viewMode === "list" ? "active" : ""} onClick={() => chooseViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
+                <button className={viewMode === "grid" ? "active" : ""} onClick={() => chooseViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
+                <button className={viewMode === "table" ? "active" : ""} onClick={() => chooseViewMode("table")} aria-pressed={viewMode === "table"} title="Compact table view"><span aria-hidden="true">▤</span> Table</button>
+              </div>
+            </>
+          )}
         </div>
 
         {bulkPriceMessage && <div className="bulk-price-message" role="status"><span>{bulkPriceMessage}</span><button onClick={() => setBulkPriceMessage("")} aria-label="Dismiss price update">×</button></div>}
+        {draftMessage && <div className="bulk-price-message" role="status"><span>{draftMessage}</span><button onClick={() => setDraftMessage("")} aria-label="Dismiss draft update">×</button></div>}
 
         {duplicateCount > 0 && (
           <button
@@ -1205,6 +1263,44 @@ export default function WatchCollection() {
             <span className="loading-dial" aria-hidden="true" />
             Opening the watch box…
           </div>
+        ) : filter === "drafts" ? (
+          visibleDrafts.length ? (
+            <div className="collection-drafts">
+              <div className="discovery-heading">
+                <div><span className="section-number">IN REVIEW</span><h2>Draft watches</h2></div>
+                <p>Fetched from brand catalogs. Nothing joins your wishlist until you keep it.</p>
+              </div>
+              <div className="discovery-grid collection-draft-grid">
+                {visibleDrafts.map((draft) => (
+                  <article className="discovery-card" key={draft.id}>
+                    <div className="discovery-image"><span>{draft.brandName.charAt(0)}</span>{draft.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={draft.imageUrl} alt={`${draft.brandName} ${draft.name}`} loading="lazy" referrerPolicy="no-referrer" />
+                    )}</div>
+                    <div className="discovery-card-copy">
+                      <small>{draft.brandName}</small>
+                      <h3>{draft.name}</h3>
+                      <p>{draft.reference ? `Ref. ${draft.reference}` : "Reference unavailable"}</p>
+                      <strong>{draft.priceCents === null ? "Price unavailable" : formatPrice(draft.priceCents, draft.currency)}</strong>
+                      <a href={draft.sourceUrl} target="_blank" rel="noreferrer">Open product page ↗</a>
+                      <a href={`/brands/${encodeURIComponent(draft.brandId)}`}>Open brand tray →</a>
+                    </div>
+                    <div className="discovery-card-actions">
+                      <button className="text-button is-danger" disabled={workingDraftId === draft.id} onClick={() => void reviewDraft(draft, "dismiss")}>Dismiss</button>
+                      <button className="add-button" disabled={workingDraftId === draft.id} onClick={() => void reviewDraft(draft, "keep")}>{workingDraftId === draft.id ? "Saving…" : "Keep + wishlist"}</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-dial" aria-hidden="true"><span /></div>
+              <h3>{discoveries.length ? "No draft watches found" : "Your draft tray is clear"}</h3>
+              <p>{discoveries.length ? "Try a different search." : "Fetch new watches from a brand page and they’ll appear here for review."}</p>
+              {!discoveries.length && <a className="outline-button drafts-brand-link" href="#brands-heading">Browse followed brands</a>}
+            </div>
+          )
         ) : Object.keys(groupedWatches).length ? (
           <div className={`brand-groups is-${viewMode}`}>
             <div className="watch-table-header" aria-hidden="true">
