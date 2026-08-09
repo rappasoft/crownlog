@@ -6,6 +6,8 @@ There is no hosted Crownlog application and no account to create. The app runs a
 
 > Crownlog is source-available for noncommercial use. Commercial use, paid hosting, resale, and other revenue-generating use are not licensed.
 
+<img width="3456" height="11536" alt="screencapture-localhost-3000-2026-08-09-14_02_13" src="https://github.com/user-attachments/assets/5039c971-8b91-4886-9bd6-17cc35132c31" />
+
 ## Quick start
 
 ### Requirements
