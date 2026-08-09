@@ -2,7 +2,7 @@
   "name": "crownlog-watch-index",
   "version": "0.1.0",
   "description": "A personal watch wishlist, collection, and price tracker.",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"

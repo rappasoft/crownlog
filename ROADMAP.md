@@ -29,7 +29,7 @@ Ideas are grouped by value and implementation size rather than promised release 
 - **Milestones** — first mechanical, first microbrand, first vintage piece, and collection anniversaries.
 - **Gift mode** — privately share a shortlist with family or friends without revealing purchase history.
 
-## Open-source and self-hosting
+## Source-available and self-hosting
 
 - **Database adapters** — keep SQLite/D1 as the zero-config default and add optional PostgreSQL/MySQL adapters.
 - **Docker deployment** — a small self-hosted image with persistent storage and documented backups.

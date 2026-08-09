@@ -4,6 +4,8 @@ Crownlog is a local-only personal watch index. It keeps followed brands, individ
 
 There is no hosted Crownlog application and no account to create. The app runs at `http://localhost:3000` and stores its working database inside this project.
 
+> Crownlog is source-available for noncommercial use. Commercial use, paid hosting, resale, and other revenue-generating use are not licensed.
+
 ## Quick start
 
 ### Requirements
@@ -49,7 +51,7 @@ Crownlog uses a project-local, SQLite-compatible D1 database. The development ru
 data/
 ```
 
-That directory is intentionally ignored by Git so personal collection data is not committed to an open-source repository. It survives app restarts and page reloads.
+That directory is intentionally ignored by Git so personal collection data is not committed to the source repository. It survives app restarts and page reloads.
 
 The runtime-managed database file is stored under `data/v3/d1/miniflare-D1DatabaseObject/` with a generated `.sqlite` filename. Stop Crownlog before copying or inspecting that file directly.
 
@@ -250,7 +252,7 @@ npm run db:generate  # Generate a migration after schema changes
 
 Database schema definitions live in `db/schema.ts`, local initialization is in `db/index.ts`, and generated migrations are kept in `drizzle/`.
 
-## Open-source notes
+## Source-available project notes
 
 - Personal data belongs in the ignored `data/` directory and must not be committed.
 - Keep automated product extraction conservative. Do not bypass authentication, CAPTCHAs, rate limits, or store access controls.
@@ -259,4 +261,6 @@ Database schema definitions live in `db/schema.ts`, local initialization is in `
 
 ## License
 
-The application code is released under the MIT License. Brand names and logo assets are not granted under that license.
+Crownlog is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). You may download, run, study, modify, and redistribute the software for permitted noncommercial purposes. Commercial use—including offering Crownlog as a paid service, reselling it, or using it as part of a revenue-generating product or service—is not licensed. Contact the copyright holder if you need separate commercial permission.
+
+Brand names, trademarks, and third-party logo assets remain the property of their respective owners and are not licensed by Crownlog.
