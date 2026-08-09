@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { ensureDatabase, getDb } from "../../../db";
 import { brands, priceHistory, watches } from "../../../db/schema";
+import { canonicalListingUrl } from "../../listing-url";
 
 type Status = "wishlist" | "owned";
 
@@ -108,6 +109,19 @@ export async function POST(request: Request) {
 
     await ensureDatabase();
     const db = getDb();
+    if (listingUrl && payload.allowDuplicate !== true) {
+      const canonicalUrl = canonicalListingUrl(listingUrl);
+      const existingWatches = await db
+        .select({ id: watches.id, brand: watches.brand, model: watches.model, listingUrl: watches.listingUrl })
+        .from(watches);
+      const duplicate = existingWatches.find((item) => canonicalListingUrl(item.listingUrl) === canonicalUrl);
+      if (duplicate) {
+        return Response.json(
+          { error: `You already saved ${duplicate.brand} ${duplicate.model} from that link.`, duplicate },
+          { status: 409 },
+        );
+      }
+    }
     await db.insert(brands).values({ id: crypto.randomUUID(), name: brand }).onConflictDoNothing();
     const [watch] = await db
       .insert(watches)

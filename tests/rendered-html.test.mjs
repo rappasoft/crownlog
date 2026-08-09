@@ -27,8 +27,13 @@ test("imports structured watch details from a product URL", async () => {
   workerUrl.searchParams.set("import-test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
   const originalFetch = globalThis.fetch;
+  let retailerAttempts = 0;
   globalThis.fetch = async (input, init) => {
     if (String(input) === "https://example-watch.test/products/moon-phase") {
+      retailerAttempts += 1;
+      if (retailerAttempts === 1) {
+        throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+      }
       return new Response(`<!doctype html><script type="application/ld+json">${JSON.stringify({
         "@context": "https://schema.org",
         "@type": "Product",
@@ -63,6 +68,7 @@ test("imports structured watch details from a product URL", async () => {
       listingUrl: "https://example-watch.test/products/moon-phase",
       imageUrl: "https://cdn.example-watch.test/moon-phase.jpg",
     });
+    assert.equal(retailerAttempts, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }

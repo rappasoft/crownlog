@@ -512,6 +512,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 }
 .bulk-price-message button { border: 0; background: transparent; color: inherit; font-size: 17px; cursor: pointer; }
 .refresh-button:disabled { cursor: wait; opacity: .55; }
+.duplicate-notice {
+  width: 100%;
+  margin-top: 15px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d7b7a9;
+  background: #f7ebe6;
+  color: var(--accent-dark);
+  text-align: left;
+  cursor: pointer;
+}
+.duplicate-notice > span { width: 22px; height: 22px; display: grid; flex: 0 0 auto; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-family: Georgia, serif; }
+.duplicate-notice strong { font-size: 12px; }
+.duplicate-notice em { margin-left: auto; font-family: Georgia, serif; font-size: 12px; }
+.duplicate-notice:hover { border-color: var(--accent); background: #f3dfd6; }
 
 .search-control {
   height: 40px;
@@ -955,6 +972,14 @@ footer span:last-child { text-align: right; }
 .danger-button { padding: 0 18px; border: 1px solid var(--accent); background: var(--accent); color: var(--white); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
 .danger-button:hover { border-color: var(--accent-dark); background: var(--accent-dark); }
 .danger-button:disabled, .delete-actions .cancel-button:disabled { cursor: wait; opacity: .55; }
+.duplicate-modal { width: min(560px, 100%); padding: 38px; text-align: center; }
+.duplicate-modal .eyebrow { justify-content: center; }
+.duplicate-mark { width: 52px; height: 52px; display: grid; place-items: center; margin: 0 auto 22px; border: 1px solid var(--accent); border-radius: 50%; color: var(--accent); font-family: Georgia, serif; font-size: 27px; }
+.duplicate-modal h2 { margin: 19px 0 10px; font-family: Georgia, serif; font-size: 36px; font-weight: 400; letter-spacing: -.03em; }
+.duplicate-modal p { max-width: 420px; margin: 0 auto; color: var(--muted); font-family: Georgia, serif; font-size: 14px; line-height: 1.65; }
+.duplicate-actions { display: flex; justify-content: center; gap: 10px; margin-top: 29px; padding-top: 24px; border-top: 1px solid var(--line); }
+.duplicate-actions button { min-height: 44px; }
+.duplicate-actions button:disabled { cursor: wait; opacity: .55; }
 .details-modal { width: min(760px, 100%); }
 .detail-section-heading { margin: 13px 0 22px; padding-top: 24px; border-top: 1px solid var(--ink); }
 .detail-section-heading span { color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: .16em; }
@@ -1380,6 +1405,12 @@ footer span:last-child { text-align: right; }
   .compare-tray .add-button { grid-column: 1 / -1; width: 100%; }
   .wear-panel { align-items: stretch; flex-direction: column; }
   .wear-panel .outline-button { width: 100%; font-size: 9px; }
+  .duplicate-notice { align-items: flex-start; flex-wrap: wrap; }
+  .duplicate-notice em { width: 100%; margin-left: 32px; }
+  .duplicate-modal { padding: 30px 24px 24px; }
+  .duplicate-modal h2 { font-size: 30px; }
+  .duplicate-actions { flex-direction: column-reverse; }
+  .duplicate-actions .outline-button { width: auto; font-size: 10px; }
   .delete-modal { padding: 30px 24px 24px; }
   .delete-modal h2 { font-size: 30px; }
   .delete-actions { flex-direction: column-reverse; }

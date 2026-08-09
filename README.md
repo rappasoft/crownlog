@@ -99,7 +99,15 @@ If the showcase is empty, add a watch with an image. **Add watch → Fill detail
 5. Review the imported brand, model, reference, image, price, currency, and listing URL.
 6. Complete anything the store did not publish and save the watch.
 
-Crownlog reads public product metadata such as JSON-LD and Open Graph tags. Some stores block automated requests or omit structured information, so every field remains editable.
+Crownlog reads public product metadata such as JSON-LD and Open Graph tags. A temporarily slow retailer request is retried once. Some stores block automated requests or omit structured information, so every field remains editable.
+
+### Duplicate watch links
+
+Crownlog compares product links without common advertising trackers such as `utm_*` and `srsltid`:
+
+- **Fill details** warns immediately when the product link already belongs to a saved watch. Choose it again if you intentionally want another copy.
+- **Save watch** checks again at the database boundary and offers **Open existing**, **Go back**, or **Add anyway**.
+- If duplicate watches exist, a notice above the collection shows how many were found. Select it to filter the collection down to those records so they can be reviewed, edited, or removed.
 
 ### Watch cards
 
@@ -174,7 +182,7 @@ Values are only totaled when the owned watches use one currency. Crownlog does n
 
 Search covers brand, model, reference, notes, tags, movement, and dial color.
 
-Available filters are All watches, Wishlist, Purchased, At target, and Service due. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
+Available filters are All watches, Wishlist, Purchased, At target, and Service due. A Duplicates filter appears when repeated product links are found. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
 
 ### Compare mode
 

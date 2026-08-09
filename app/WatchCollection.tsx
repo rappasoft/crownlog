@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { canonicalListingUrl, duplicateListingGroups } from "./listing-url";
 
 type WatchStatus = "wishlist" | "owned";
 
@@ -74,6 +75,30 @@ type ImportedProduct = {
   imageUrl: string;
 };
 
+type AddWatchPayload = {
+  brand: string;
+  model: string;
+  reference: string;
+  notes: string;
+  status: string;
+  grailScore: string;
+  currentPrice: string;
+  targetPrice: string;
+  currency: string;
+  listingUrl: string;
+  imageUrl: string;
+  movement: string;
+  caseSize: string;
+  caseMaterial: string;
+  dialColor: string;
+  waterResistance: string;
+  tags: string;
+  purchasePrice: string;
+  purchaseDate: string;
+};
+
+type DuplicateWatchSummary = Pick<Watch, "id" | "brand" | "model" | "listingUrl">;
+
 type MarketMatch = {
   id: string;
   brand: string;
@@ -83,7 +108,7 @@ type MarketMatch = {
   averagePriceCents: number | null;
 };
 
-type Filter = "all" | WatchStatus | "deals" | "service";
+type Filter = "all" | WatchStatus | "deals" | "service" | "duplicates";
 type SortMode = "brand" | "grail" | "price-low" | "price-high" | "newest";
 type ViewMode = "list" | "grid" | "table";
 
@@ -93,6 +118,7 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Purchased", value: "owned" },
   { label: "At target", value: "deals" },
   { label: "Service due", value: "service" },
+  { label: "Duplicates", value: "duplicates" },
 ];
 
 function countLabel(count: number) {
@@ -176,6 +202,9 @@ export default function WatchCollection() {
   const [importingWatch, setImportingWatch] = useState(false);
   const [importMessage, setImportMessage] = useState("");
   const [importFailed, setImportFailed] = useState(false);
+  const [duplicateImportUrl, setDuplicateImportUrl] = useState("");
+  const [duplicateWarning, setDuplicateWarning] = useState<{ existing: DuplicateWatchSummary; payload: AddWatchPayload } | null>(null);
+  const [savingDuplicate, setSavingDuplicate] = useState(false);
   const [priceWatch, setPriceWatch] = useState<Watch | null>(null);
   const [priceCurrency, setPriceCurrency] = useState("USD");
   const [checkingPrice, setCheckingPrice] = useState(false);
@@ -249,7 +278,7 @@ export default function WatchCollection() {
   }, [loading, watches]);
 
   useEffect(() => {
-    if (!showForm && !showBrandForm && !priceWatch && !rouletteWatch && !showGuide && !showVault && !showCompare && !deleteWatch) return;
+    if (!showForm && !showBrandForm && !priceWatch && !rouletteWatch && !showGuide && !showVault && !showCompare && !deleteWatch && !duplicateWarning) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (!deletingWatch) {
@@ -262,12 +291,13 @@ export default function WatchCollection() {
           setShowVault(false);
           setShowCompare(false);
           setDeleteWatch(null);
+          setDuplicateWarning(null);
         }
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [deleteWatch, deletingWatch, priceWatch, rouletteWatch, showBrandForm, showCompare, showForm, showGuide, showVault]);
+  }, [deleteWatch, deletingWatch, duplicateWarning, priceWatch, rouletteWatch, showBrandForm, showCompare, showForm, showGuide, showVault]);
 
   const stats = useMemo(
     () => ({
@@ -304,13 +334,18 @@ export default function WatchCollection() {
     };
   }, [watches]);
 
+  const duplicateGroups = useMemo(() => duplicateListingGroups(watches), [watches]);
+  const duplicateWatchIds = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((watch) => watch.id))), [duplicateGroups]);
+  const duplicateCount = duplicateWatchIds.size;
+
   const visibleWatches = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return watches.filter((watch) => {
       const matchesFilter = filter === "all"
         || watch.status === filter
         || (filter === "deals" && watch.currentPriceCents !== null && watch.targetPriceCents !== null && watch.currentPriceCents <= watch.targetPriceCents)
-        || (filter === "service" && isServiceDue(watch));
+        || (filter === "service" && isServiceDue(watch))
+        || (filter === "duplicates" && duplicateWatchIds.has(watch.id));
       const matchesQuery =
         !normalizedQuery ||
         [watch.brand, watch.model, watch.reference, watch.notes, watch.tags, watch.movement, watch.dialColor]
@@ -325,7 +360,7 @@ export default function WatchCollection() {
       if (sortMode === "newest") return b.createdAt.localeCompare(a.createdAt);
       return a.brand.localeCompare(b.brand) || a.model.localeCompare(b.model);
     });
-  }, [filter, query, sortMode, watches]);
+  }, [duplicateWatchIds, filter, query, sortMode, watches]);
 
   const groupedWatches = useMemo(() => {
     return visibleWatches.reduce<Record<string, Watch[]>>((groups, watch) => {
@@ -362,6 +397,7 @@ export default function WatchCollection() {
   function openWatchForm() {
     setImportMessage("");
     setImportFailed(false);
+    setDuplicateImportUrl("");
     setNewCurrency("USD");
     setNewImageUrl("");
     setShowForm(true);
@@ -570,11 +606,36 @@ export default function WatchCollection() {
     }
   }
 
+  async function createWatch(payload: AddWatchPayload, allowDuplicate = false) {
+    const response = await fetch("/api/watches", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ...payload, allowDuplicate }),
+    });
+    const data = (await response.json()) as { watch?: Watch; duplicate?: DuplicateWatchSummary; error?: string };
+    if (response.status === 409 && data.duplicate) {
+      setDuplicateWarning({ existing: data.duplicate, payload });
+      return false;
+    }
+    if (!response.ok || !data.watch) throw new Error(data.error || "Couldn’t save this watch.");
+    await loadData();
+    watchFormRef.current?.reset();
+    setNewCurrency("USD");
+    setNewImageUrl("");
+    setDuplicateImportUrl("");
+    setDuplicateWarning(null);
+    setShowForm(false);
+    setFilter("all");
+    setQuery("");
+    setError("");
+    return true;
+  }
+
   async function addWatch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const payload = {
+    const payload: AddWatchPayload = {
       brand: String(formData.get("brand") || ""),
       model: String(formData.get("model") || ""),
       reference: String(formData.get("reference") || ""),
@@ -600,26 +661,32 @@ export default function WatchCollection() {
     if (submitButton) submitButton.disabled = true;
 
     try {
-      const response = await fetch("/api/watches", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = (await response.json()) as { watch?: Watch; error?: string };
-      if (!response.ok || !data.watch) throw new Error(data.error || "Couldn’t save this watch.");
-      await loadData();
-      form.reset();
-      setNewCurrency("USD");
-      setNewImageUrl("");
-      setShowForm(false);
-      setFilter("all");
-      setQuery("");
-      setError("");
+      await createWatch(payload);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Couldn’t save this watch.");
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
+  }
+
+  async function addDuplicateAnyway() {
+    if (!duplicateWarning) return;
+    setSavingDuplicate(true);
+    try {
+      await createWatch(duplicateWarning.payload, true);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Couldn’t save this watch.");
+    } finally {
+      setSavingDuplicate(false);
+    }
+  }
+
+  function openExistingDuplicate() {
+    if (!duplicateWarning) return;
+    const existing = watches.find((watch) => watch.id === duplicateWarning.existing.id);
+    setDuplicateWarning(null);
+    setShowForm(false);
+    if (existing) openPriceWatch(existing);
   }
 
   async function importWatchFromUrl() {
@@ -632,9 +699,19 @@ export default function WatchCollection() {
       return;
     }
 
+    const canonicalUrl = canonicalListingUrl(listingUrl);
+    const existing = canonicalUrl ? watches.find((watch) => canonicalListingUrl(watch.listingUrl) === canonicalUrl) : undefined;
+    if (existing && duplicateImportUrl !== canonicalUrl) {
+      setDuplicateImportUrl(canonicalUrl);
+      setImportMessage(`Already saved: ${existing.brand} ${existing.model}. Click Fill details again if you still want another.`);
+      setImportFailed(true);
+      return;
+    }
+
     setImportingWatch(true);
     setImportMessage("");
     setImportFailed(false);
+    setDuplicateImportUrl("");
     try {
       const response = await fetch("/api/import", {
         method: "POST",
@@ -1044,7 +1121,7 @@ export default function WatchCollection() {
             />
           </label>
           <div className="filter-tabs" aria-label="Filter watches">
-            {FILTERS.map((item) => (
+            {FILTERS.filter((item) => item.value !== "duplicates" || duplicateCount > 0).map((item) => (
               <button
                 key={item.value}
                 className={filter === item.value ? "active" : ""}
@@ -1073,6 +1150,21 @@ export default function WatchCollection() {
         </div>
 
         {bulkPriceMessage && <div className="bulk-price-message" role="status"><span>{bulkPriceMessage}</span><button onClick={() => setBulkPriceMessage("")} aria-label="Dismiss price update">×</button></div>}
+
+        {duplicateCount > 0 && (
+          <button
+            className="duplicate-notice"
+            onClick={() => {
+              setFilter("duplicates");
+              setQuery("");
+              document.getElementById("collection-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            <span aria-hidden="true">!</span>
+            <strong>You have {duplicateCount} duplicate {duplicateCount === 1 ? "watch" : "watches"}.</strong>
+            <em>Click here to review.</em>
+          </button>
+        )}
 
         {error && (
           <div className="error-banner" role="alert">
@@ -1260,6 +1352,26 @@ export default function WatchCollection() {
             <div className="delete-actions">
               <button className="cancel-button" disabled={deletingWatch} onClick={() => setDeleteWatch(null)}>Keep watch</button>
               <button className="danger-button" disabled={deletingWatch} onClick={() => void removeWatch(deleteWatch)}>{deletingWatch ? "Deleting…" : "Delete watch"}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {duplicateWarning && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (!savingDuplicate && event.target === event.currentTarget) setDuplicateWarning(null);
+        }}>
+          <section className="watch-modal duplicate-modal" role="alertdialog" aria-modal="true" aria-labelledby="duplicate-watch-title" aria-describedby="duplicate-watch-description">
+            <div className="duplicate-mark" aria-hidden="true">!</div>
+            <span className="eyebrow"><span /> POSSIBLE DUPLICATE</span>
+            <h2 id="duplicate-watch-title">That link is already saved.</h2>
+            <p id="duplicate-watch-description">
+              Crownlog found {duplicateWarning.existing.brand} {duplicateWarning.existing.model} with the same product link.
+            </p>
+            <div className="duplicate-actions">
+              <button className="cancel-button" disabled={savingDuplicate} onClick={() => setDuplicateWarning(null)}>Go back</button>
+              <button className="outline-button" disabled={savingDuplicate} onClick={openExistingDuplicate}>Open existing</button>
+              <button className="add-button" disabled={savingDuplicate} onClick={() => void addDuplicateAnyway()}>{savingDuplicate ? "Adding…" : "Add anyway"}</button>
             </div>
           </section>
         </div>

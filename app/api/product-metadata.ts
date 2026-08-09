@@ -8,6 +8,36 @@ export type ProductMetadata = {
   imageUrl: string;
 };
 
+const PRODUCT_PAGE_ATTEMPTS = 2;
+const PRODUCT_PAGE_TIMEOUT_MS = 12000;
+
+function retryableFetchError(error: unknown) {
+  return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || error.name === "TypeError");
+}
+
+async function fetchRetailerPage(url: URL) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= PRODUCT_PAGE_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(PRODUCT_PAGE_TIMEOUT_MS),
+        headers: {
+          accept: "text/html,application/xhtml+xml",
+          "user-agent": "Crownlog Product Import/1.0 (+personal watch index)",
+        },
+      });
+    } catch (error) {
+      lastError = error;
+      if (!retryableFetchError(error) || attempt === PRODUCT_PAGE_ATTEMPTS) break;
+    }
+  }
+  if (lastError instanceof Error && (lastError.name === "TimeoutError" || lastError.name === "AbortError")) {
+    throw new Error("The retailer took too long to respond after two attempts. Try again, or add the details manually.");
+  }
+  throw lastError;
+}
+
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 }
@@ -154,14 +184,7 @@ export function extractProductMetadata(html: string, listingUrl: string): Produc
 export async function fetchProductPage(initialUrl: URL) {
   let url = initialUrl;
   for (let redirects = 0; redirects <= 3; redirects += 1) {
-    const response = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(12000),
-      headers: {
-        accept: "text/html,application/xhtml+xml",
-        "user-agent": "Crownlog Product Import/1.0 (+personal watch index)",
-      },
-    });
+    const response = await fetchRetailerPage(url);
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location || redirects === 3) throw new Error("The retailer redirected too many times.");
