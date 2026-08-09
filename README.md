@@ -173,6 +173,7 @@ If no provider match exists, enter a **Manual market estimate** in Details. Mark
 
 - Recorded purchase total for owned watches
 - Current tracked collection value
+- **Future spend**, using market estimates or current listing prices for wishlist watches
 - Watches with an overdue service date
 - Total logged wrist time
 

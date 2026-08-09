@@ -318,19 +318,26 @@ export default function WatchCollection() {
 
   const collectorLedger = useMemo(() => {
     const owned = watches.filter((watch) => watch.status === "owned");
+    const wishlist = watches.filter((watch) => watch.status === "wishlist");
     const purchased = owned.filter((watch) => watch.purchasePriceCents !== null);
     const valued = owned.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
+    const valuedWishlist = wishlist.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
     const purchaseCurrencies = new Set(purchased.map((watch) => watch.currency));
     const valueCurrencies = new Set(valued.map((watch) => watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency));
+    const wishlistCurrencies = new Set(valuedWishlist.map((watch) => watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency));
     const purchaseTotal = owned.reduce((sum, watch) => sum + (watch.purchasePriceCents || 0), 0);
     const currentTotal = owned.reduce((sum, watch) => sum + (watch.marketPriceCents ?? watch.currentPriceCents ?? 0), 0);
+    const wishlistTotal = wishlist.reduce((sum, watch) => sum + (watch.marketPriceCents ?? watch.currentPriceCents ?? 0), 0);
     const recordedPurchases = owned.filter((watch) => watch.purchasePriceCents !== null).length;
     return {
       purchaseValue: purchaseCurrencies.size <= 1 && recordedPurchases ? formatPrice(purchaseTotal, purchased[0]?.currency || "USD") : recordedPurchases ? "Mixed currencies" : "Not recorded",
       currentValue: valueCurrencies.size <= 1 && valued.length ? formatPrice(currentTotal, valued[0]?.marketPriceCents !== null ? valued[0]?.marketCurrency : valued[0]?.currency) : valued.length ? "Mixed currencies" : owned.length ? "Not recorded" : "No watches yet",
+      futureSpend: wishlistCurrencies.size <= 1 && valuedWishlist.length ? formatPrice(wishlistTotal, valuedWishlist[0]?.marketPriceCents !== null ? valuedWishlist[0]?.marketCurrency : valuedWishlist[0]?.currency) : valuedWishlist.length ? "Mixed currencies" : wishlist.length ? "Not estimated" : "No watches yet",
       providerValues: valued.filter((watch) => watch.marketProvider === "the-watch-info").length,
       recordedPurchases,
       owned: owned.length,
+      wishlist: wishlist.length,
+      valuedWishlist: valuedWishlist.length,
     };
   }, [watches]);
 
@@ -1029,6 +1036,7 @@ export default function WatchCollection() {
         <div className="ledger-grid">
           <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded</span></article>
           <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
+          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated value for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces</span></article>
           <article className={stats.serviceDue ? "needs-attention" : ""}><small>Service desk</small><strong>{stats.serviceDue ? `${stats.serviceDue} due` : "All clear"}</strong><span>Upcoming service dates stay in Details</span></article>
           <article><small>Wrist time</small><strong>{stats.wears} wears</strong><span>Log a wear from an owned watch’s Details</span></article>
         </div>

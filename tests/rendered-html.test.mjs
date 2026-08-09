@@ -18,6 +18,7 @@ test("server-renders the Crownlog watch index", async () => {
   assert.match(html, /Watches I’m/);
   assert.match(html, /The collection/);
   assert.match(html, /Collection at a glance/);
+  assert.match(html, /Future spend/);
   assert.match(html, />Vault</);
   assert.doesNotMatch(html, /codex-preview/);
 });

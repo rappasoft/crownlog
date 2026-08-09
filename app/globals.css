@@ -267,7 +267,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ledger-intro { display: flex; align-items: baseline; gap: 21px; margin-bottom: 24px; }
 .ledger-intro h2 { margin: 0; font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; }
 .ledger-intro p { margin: 5px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; }
-.ledger-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+.ledger-grid { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
 .ledger-grid article { min-height: 132px; padding: 22px 20px; border-right: 1px solid var(--line); }
 .ledger-grid article:first-child { padding-left: 0; }
 .ledger-grid article:last-child { border-right: 0; }
@@ -277,6 +277,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ledger-grid span a { display: block; margin-top: 3px; color: var(--accent); font-size: 7px; font-weight: 700; text-decoration: none; text-transform: uppercase; }
 .ledger-grid span a:hover { text-decoration: underline; }
 .ledger-grid .needs-attention strong { color: var(--accent); }
+.ledger-grid .future-spend strong { color: var(--accent-dark); }
 
 .brand-directory {
   max-width: 1224px;
@@ -1313,9 +1314,9 @@ footer span:last-child { text-align: right; }
   .collector-ledger { padding-top: 55px; }
   .ledger-grid { grid-template-columns: repeat(2, 1fr); }
   .ledger-grid article { border-bottom: 1px solid var(--line); }
-  .ledger-grid article:nth-child(2) { border-right: 0; }
-  .ledger-grid article:nth-last-child(-n + 2) { border-bottom: 0; }
-  .ledger-grid article:nth-child(3) { padding-left: 0; }
+  .ledger-grid article:nth-child(even) { border-right: 0; }
+  .ledger-grid article:nth-child(odd) { padding-left: 0; }
+  .ledger-grid article:last-child { grid-column: 1 / -1; border-right: 0; border-bottom: 0; }
   .collection-section { padding: 75px 0 90px; }
   .brand-directory { padding-top: 68px; }
   .brand-directory-grid { grid-template-columns: repeat(2, 1fr); }
