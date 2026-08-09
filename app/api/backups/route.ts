@@ -1,5 +1,6 @@
 import { ensureDatabase, getDb } from "../../../db";
-import { brands, priceHistory, watches } from "../../../db/schema";
+import { brandDiscoveries, brands, priceHistory, watches } from "../../../db/schema";
+import { canonicalListingUrl } from "../../listing-url";
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -42,13 +43,40 @@ function webUrl(value: unknown, httpsOnly = false) {
   }
 }
 
+export async function GET() {
+  try {
+    await ensureDatabase();
+    const db = getDb();
+    const [brandRows, watchRows, historyRows, discoveryRows] = await Promise.all([
+      db.select().from(brands),
+      db.select().from(watches),
+      db.select().from(priceHistory),
+      db.select().from(brandDiscoveries),
+    ]);
+    const historyByWatch = historyRows.reduce<Record<string, typeof historyRows>>((groups, point) => {
+      (groups[point.watchId] ||= []).push(point);
+      return groups;
+    }, {});
+    return Response.json({
+      format: "crownlog-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      brands: brandRows,
+      watches: watchRows.map((watch) => ({ ...watch, priceHistory: historyByWatch[watch.id] || [] })),
+      discoveries: discoveryRows,
+    });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Couldn’t create that backup." }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const backup = (await request.json()) as Record<string, unknown>;
     if (backup.format !== "crownlog-backup" || backup.version !== 1) {
       return Response.json({ error: "That file is not a supported Crownlog backup." }, { status: 400 });
     }
-    if (!Array.isArray(backup.brands) || !Array.isArray(backup.watches) || backup.brands.length > 2_000 || backup.watches.length > 5_000) {
+    if (!Array.isArray(backup.brands) || !Array.isArray(backup.watches) || backup.brands.length > 2_000 || backup.watches.length > 5_000 || (Array.isArray(backup.discoveries) && backup.discoveries.length > 10_000)) {
       return Response.json({ error: "That backup is invalid or too large." }, { status: 400 });
     }
 
@@ -57,6 +85,7 @@ export async function POST(request: Request) {
     let restoredBrands = 0;
     let restoredWatches = 0;
     let restoredPrices = 0;
+    let restoredDiscoveries = 0;
 
     for (const item of backup.brands as Array<Record<string, unknown>>) {
       const id = clean(item.id, 80) || crypto.randomUUID();
@@ -137,7 +166,31 @@ export async function POST(request: Request) {
       }
     }
 
-    return Response.json({ restored: { brands: restoredBrands, watches: restoredWatches, prices: restoredPrices } });
+    const discoveries = Array.isArray(backup.discoveries) ? backup.discoveries as Array<Record<string, unknown>> : [];
+    for (const item of discoveries) {
+      const brandId = clean(item.brandId, 80);
+      const name = clean(item.name, 120);
+      const sourceUrl = webUrl(item.sourceUrl);
+      const canonicalUrl = canonicalListingUrl(clean(item.canonicalUrl, 1_500) || sourceUrl);
+      if (!brandId || !name || !sourceUrl || !canonicalUrl) continue;
+      await db.insert(brandDiscoveries).values({
+        id: clean(item.id, 80) || crypto.randomUUID(),
+        brandId,
+        name,
+        reference: clean(item.reference, 100),
+        imageUrl: webUrl(item.imageUrl, true),
+        priceCents: optionalCents(item.priceCents),
+        currency: /^[A-Z]{3}$/.test(clean(item.currency, 3).toUpperCase()) ? clean(item.currency, 3).toUpperCase() : "USD",
+        sourceUrl,
+        canonicalUrl,
+        status: item.status === "kept" || item.status === "dismissed" ? item.status : "draft",
+        createdAt: timestamp(item.createdAt),
+        updatedAt: timestamp(item.updatedAt),
+      }).onConflictDoNothing();
+      restoredDiscoveries += 1;
+    }
+
+    return Response.json({ restored: { brands: restoredBrands, watches: restoredWatches, prices: restoredPrices, discoveries: restoredDiscoveries } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Couldn’t restore that backup." }, { status: 500 });
   }

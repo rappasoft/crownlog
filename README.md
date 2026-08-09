@@ -57,9 +57,9 @@ That directory is intentionally ignored by Git so personal collection data is no
 
 The runtime-managed database file is stored under `data/v3/d1/miniflare-D1DatabaseObject/` with a generated `.sqlite` filename. Stop Crownlog before copying or inspecting that file directly.
 
-The app does not use browser `localStorage`, does not need MySQL, and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
+The app uses browser `localStorage` only to remember the selected List, Grid, or Table display. Watches, brands, discovery decisions, prices, and personal records remain in project-local SQLite. Crownlog does not need MySQL and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
 
-When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
+When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. When you explicitly choose **Fetch new watches**, Crownlog requests the selected brand’s public sitemap and product pages. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
 
 A fresh Git clone starts with a completely empty database: no watches, followed brands, prices, or personal notes are bundled with the source. Crownlog creates the schema automatically the first time it starts. Existing installations keep their current data when the source code is updated.
 
@@ -76,10 +76,25 @@ If the showcase is empty, add a watch with an image. **Add watch → Fill detail
 ### Brand directory
 
 - Choose **Follow brand** to save an entire watch brand or retailer without choosing a model.
-- Select a brand card to edit its name, notes, website, or directory type.
+- Select a brand card to open its dedicated brand and Discovery Tray page.
+- Use the edit icon on a brand card to change its name, notes, website, or directory type.
 - **Visit site** opens its official website.
 - The number on a brand card shows how many individual watches from that brand are saved.
 - Use **View all brands** when the directory contains more than twelve entries.
+
+### Brand pages and the Discovery Tray
+
+Each followed brand has a dedicated page. Open a brand card from the main directory to use it.
+
+1. Save the brand’s official public website if it does not already have one.
+2. Choose **Fetch new watches**.
+3. Crownlog reads public sitemap entries and a small random batch of likely product pages.
+4. Review the imported image, model, reference, price, and original product link in the **Discovery Tray**.
+5. Choose **Keep + wishlist** to create a normal wishlist watch, or **Dismiss** to hide that product permanently.
+
+Draft, kept, and dismissed products are stored separately from the wishlist. Repeated fetches skip previously reviewed URLs and watches already saved in Crownlog. The brand page also shows watches from that brand already in the collection.
+
+Discovery depends on public retailer metadata. Some websites omit sitemaps, use unusual URLs, require JavaScript, or block automated requests. Crownlog reports those cases instead of adding incomplete records; individual sites may require future custom adapters.
 
 ### Adding a watch manually
 
@@ -111,7 +126,7 @@ Crownlog compares product links without common advertising trackers such as `utm
 
 ### Watch cards
 
-Use the **List**, **Grid**, and **Table** buttons beside the sorting menu to switch between the grouped ledger, visual card gallery, and compact spreadsheet-style collection. Table view aligns brand, model/reference, listing price, market estimate, last check date, and status into scan-friendly columns.
+Use the **List**, **Grid**, and **Table** buttons beside the sorting menu to switch between the grouped ledger, visual card gallery, and compact spreadsheet-style collection. Crownlog remembers this display choice in the current browser. Table view aligns brand, model/reference, listing price, market estimate, last check date, and status into scan-friendly columns.
 
 Each watch card provides quick actions:
 
@@ -197,7 +212,7 @@ Choose **Watch roulette** when you want Crownlog to pick a watch. Wishlist watch
 
 Open **Vault** in the header.
 
-- **Download JSON** creates a complete Crownlog backup containing brands, watches, specifications, ownership data, and price history.
+- **Download JSON** creates a complete Crownlog backup containing brands, watches, Discovery Tray decisions, specifications, ownership data, and price history.
 - **Download CSV** creates a spreadsheet-friendly watch table for Excel, Numbers, or Google Sheets.
 - **Choose JSON** merges a Crownlog backup into the current database. Matching watch IDs are updated, missing records are added, and unrelated local records are not removed.
 

@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { canonicalListingUrl, duplicateListingGroups } from "./listing-url";
 
 type WatchStatus = "wishlist" | "owned";
@@ -120,6 +121,7 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Service due", value: "service" },
   { label: "Duplicates", value: "duplicates" },
 ];
+const VIEW_PREFERENCE_KEY = "crownlog-view-mode";
 
 function countLabel(count: number) {
   return `${count} ${count === 1 ? "watch" : "watches"}`;
@@ -254,6 +256,15 @@ export default function WatchCollection() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const savedView = window.localStorage.getItem(VIEW_PREFERENCE_KEY);
+    if (savedView === "list" || savedView === "grid" || savedView === "table") {
+      // Restore the user’s display preference after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setViewMode(savedView);
+    }
+  }, []);
 
   useEffect(() => {
     if (loading || autoMarketRefreshStarted.current) return;
@@ -399,6 +410,11 @@ export default function WatchCollection() {
   function openBrandForm(brand: Brand | null = null) {
     setEditingBrand(brand);
     setShowBrandForm(true);
+  }
+
+  function chooseViewMode(mode: ViewMode) {
+    setViewMode(mode);
+    window.localStorage.setItem(VIEW_PREFERENCE_KEY, mode);
   }
 
   function openWatchForm() {
@@ -548,14 +564,16 @@ export default function WatchCollection() {
     setCheckingAllPrices(false);
   }
 
-  function downloadBackup(format: "json" | "csv") {
+  async function downloadBackup(format: "json" | "csv") {
     const date = new Date().toISOString().slice(0, 10);
     if (format === "json") {
-      downloadFile(
-        `crownlog-backup-${date}.json`,
-        JSON.stringify({ format: "crownlog-backup", version: 1, exportedAt: new Date().toISOString(), brands, watches }, null, 2),
-        "application/json",
-      );
+      const response = await fetch("/api/backups", { cache: "no-store" });
+      const backup = await response.json() as { error?: string };
+      if (!response.ok) {
+        setRestoreMessage(backup.error || "Couldn’t create the backup.");
+        return;
+      }
+      downloadFile(`crownlog-backup-${date}.json`, JSON.stringify(backup, null, 2), "application/json");
       return;
     }
     const headings = ["Brand", "Model", "Reference", "Status", "Grail score", "Current price", "Target price", "Market estimate", "Market low", "Market high", "Market confidence", "Market samples", "Market provider", "Purchase price", "Currency", "Movement", "Case size", "Case material", "Dial color", "Water resistance", "Tags", "Purchase date", "Last service", "Next service", "Wear count", "Listing URL", "Image URL", "Notes"];
@@ -580,11 +598,11 @@ export default function WatchCollection() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(backup),
       });
-      const data = (await response.json()) as { restored?: { brands: number; watches: number; prices: number }; error?: string };
+      const data = (await response.json()) as { restored?: { brands: number; watches: number; prices: number; discoveries: number }; error?: string };
       if (!response.ok || !data.restored) throw new Error(data.error || "Couldn’t restore that backup.");
       await loadData();
       setCompareIds([]);
-      setRestoreMessage(`Restored ${data.restored.watches} watches, ${data.restored.brands} brands, and ${data.restored.prices} price records.`);
+      setRestoreMessage(`Restored ${data.restored.watches} watches, ${data.restored.brands} brands, ${data.restored.prices} price records, and ${data.restored.discoveries} discovery records.`);
     } catch (restoreError) {
       setRestoreMessage(restoreError instanceof Error ? restoreError.message : "Couldn’t restore that backup.");
     } finally {
@@ -1063,7 +1081,8 @@ export default function WatchCollection() {
                   className="directory-card"
                   key={brand.id}
                 >
-                  <button className="directory-card-edit" onClick={() => openBrandForm(brand)} aria-label={`Edit ${brand.name}`} />
+                  <Link className="directory-card-link" href={`/brands/${encodeURIComponent(brand.id)}`} aria-label={`Open ${brand.name} discovery page`} />
+                  <button className="directory-card-edit" onClick={() => openBrandForm(brand)} aria-label={`Edit ${brand.name}`} title="Edit brand">✎</button>
                   <div className="directory-monogram" aria-hidden="true">
                     <span>{brand.name.charAt(0)}</span>
                     {/^(brand|retailer)-/.test(brand.id) && (
@@ -1084,7 +1103,7 @@ export default function WatchCollection() {
                     {brand.websiteUrl && <a className="directory-link" href={brand.websiteUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Visit site ↗</a>}
                   </div>
                   <span className="model-count">{String(modelCount).padStart(2, "0")}</span>
-                  <button className="directory-remove" onClick={(event) => { event.stopPropagation(); void removeBrand(brand); }} aria-label={`Stop following ${brand.name}`}>×</button>
+                  <button className="directory-remove" onClick={() => void removeBrand(brand)} aria-label={`Stop following ${brand.name}`}>×</button>
                 </article>
               );
             })}
@@ -1151,9 +1170,9 @@ export default function WatchCollection() {
             </select>
           </label>
           <div className="view-toggle" aria-label="Display watches">
-            <button className={viewMode === "list" ? "active" : ""} onClick={() => setViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
-            <button className={viewMode === "grid" ? "active" : ""} onClick={() => setViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
-            <button className={viewMode === "table" ? "active" : ""} onClick={() => setViewMode("table")} aria-pressed={viewMode === "table"} title="Compact table view"><span aria-hidden="true">▤</span> Table</button>
+            <button className={viewMode === "list" ? "active" : ""} onClick={() => chooseViewMode("list")} aria-pressed={viewMode === "list"} title="List view"><span aria-hidden="true">☰</span> List</button>
+            <button className={viewMode === "grid" ? "active" : ""} onClick={() => chooseViewMode("grid")} aria-pressed={viewMode === "grid"} title="Grid view"><span aria-hidden="true">▦</span> Grid</button>
+            <button className={viewMode === "table" ? "active" : ""} onClick={() => chooseViewMode("table")} aria-pressed={viewMode === "table"} title="Compact table view"><span aria-hidden="true">▤</span> Table</button>
           </div>
         </div>
 
@@ -1332,7 +1351,7 @@ export default function WatchCollection() {
             </div>
             <div className="guide-grid">
               <article><span>01</span><h3>Add a watch</h3><p>Choose <strong>Add watch</strong>. Paste a product URL and use <strong>Fill details</strong>, or complete the fields manually.</p></article>
-              <article><span>02</span><h3>Brands</h3><p>Use <strong>Follow brand</strong>. Click any saved brand card to edit its website, notes, or type.</p></article>
+              <article><span>02</span><h3>Brands</h3><p>Use <strong>Follow brand</strong>. Open a brand card for its Discovery Tray, or use the edit icon to change its website and notes.</p></article>
               <article><span>03</span><h3>Edit & catalog</h3><p>Open <strong>Details</strong> to edit a watch, add its specifications, tags, purchase record, and service dates.</p></article>
               <article><span>04</span><h3>Prices</h3><p>Track an exact listing, confirm a free market estimate in <strong>Details</strong>, or use <strong>Refresh all prices</strong> for both.</p></article>
               <article><span>05</span><h3>Find things</h3><p>Search notes and tags, filter deals or service-due pieces, and sort by grail, price, or date.</p></article>
@@ -1397,8 +1416,8 @@ export default function WatchCollection() {
             <div className="vault-content">
               <p>Crownlog keeps the working collection in its database. These downloads give you a personal copy whenever you want one.</p>
               <div className="vault-grid">
-                <article><span>FULL BACKUP</span><h3>JSON archive</h3><p>Every brand, watch, specification, ownership record, and price-history point in one structured file.</p><button className="add-button" onClick={() => downloadBackup("json")}>Download JSON</button></article>
-                <article><span>SPREADSHEET</span><h3>Watch CSV</h3><p>A clean table of the watch collection for Excel, Numbers, Google Sheets, or your own analysis.</p><button className="outline-button" onClick={() => downloadBackup("csv")}>Download CSV</button></article>
+                <article><span>FULL BACKUP</span><h3>JSON archive</h3><p>Every brand, watch, discovery decision, ownership record, and price-history point in one structured file.</p><button className="add-button" onClick={() => void downloadBackup("json")}>Download JSON</button></article>
+                <article><span>SPREADSHEET</span><h3>Watch CSV</h3><p>A clean table of the watch collection for Excel, Numbers, Google Sheets, or your own analysis.</p><button className="outline-button" onClick={() => void downloadBackup("csv")}>Download CSV</button></article>
               </div>
               <div className="restore-panel">
                 <div><span>RESTORE</span><strong>Merge a Crownlog backup</strong><p>Existing matching records are updated; anything else is added. Nothing outside the backup is removed.</p></div>

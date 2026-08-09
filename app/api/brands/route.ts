@@ -1,6 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { ensureDatabase, getDb } from "../../../db";
-import { brands } from "../../../db/schema";
+import { brandDiscoveries, brands } from "../../../db/schema";
 
 function clean(value: unknown, max = 160) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
@@ -93,6 +93,7 @@ export async function DELETE(request: Request) {
 
     await ensureDatabase();
     const db = getDb();
+    await db.delete(brandDiscoveries).where(eq(brandDiscoveries.brandId, id));
     const [brand] = await db.delete(brands).where(eq(brands.id, id)).returning({ id: brands.id });
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
     return Response.json({ deleted: true });

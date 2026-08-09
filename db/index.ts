@@ -75,6 +75,22 @@ export async function ensureDatabase() {
       recorded_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
     )`),
     env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_price_history_watch_id ON price_history (watch_id)"),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS brand_discoveries (
+      id TEXT PRIMARY KEY NOT NULL,
+      brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      reference TEXT DEFAULT '' NOT NULL,
+      image_url TEXT DEFAULT '' NOT NULL,
+      price_cents INTEGER,
+      currency TEXT DEFAULT 'USD' NOT NULL,
+      source_url TEXT NOT NULL,
+      canonical_url TEXT NOT NULL,
+      status TEXT DEFAULT 'draft' NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+    )`),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_brand_discoveries_brand ON brand_discoveries (brand_id)"),
+    env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_brand_discoveries_brand_url ON brand_discoveries (brand_id, canonical_url)"),
   ]);
 
   const columns = await env.DB.prepare("PRAGMA table_info(watches)").all<{ name: string }>();

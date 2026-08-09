@@ -70,3 +70,25 @@ export const priceHistory = sqliteTable(
   },
   (table) => [index("idx_price_history_watch_id").on(table.watchId)],
 );
+
+export const brandDiscoveries = sqliteTable(
+  "brand_discoveries",
+  {
+    id: text("id").primaryKey(),
+    brandId: text("brand_id").notNull().references(() => brands.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    reference: text("reference").notNull().default(""),
+    imageUrl: text("image_url").notNull().default(""),
+    priceCents: integer("price_cents"),
+    currency: text("currency").notNull().default("USD"),
+    sourceUrl: text("source_url").notNull(),
+    canonicalUrl: text("canonical_url").notNull(),
+    status: text("status", { enum: ["draft", "kept", "dismissed"] }).notNull().default("draft"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("idx_brand_discoveries_brand").on(table.brandId),
+    uniqueIndex("idx_brand_discoveries_brand_url").on(table.brandId, table.canonicalUrl),
+  ],
+);

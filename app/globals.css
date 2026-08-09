@@ -335,16 +335,29 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   cursor: pointer;
 }
 .directory-card:hover { background: rgba(255,255,255,.52); }
-.directory-card-edit {
+.directory-card-link {
   position: absolute;
   inset: 0;
   z-index: 0;
+}
+.directory-card-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.directory-card > :not(.directory-card-link, .directory-card-edit, .directory-remove) { z-index: 1; pointer-events: none; }
+.directory-card-edit {
+  position: absolute;
+  top: 6px;
+  right: 31px;
+  z-index: 2;
+  width: 25px;
+  height: 25px;
   border: 0;
   background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  opacity: 0;
   cursor: pointer;
 }
-.directory-card-edit:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.directory-card > :not(.directory-card-edit) { z-index: 1; pointer-events: none; }
+.directory-card:hover .directory-card-edit, .directory-card-edit:focus { opacity: 1; }
+.directory-card-edit:hover { color: var(--accent); }
 .directory-monogram {
   width: 56px;
   height: 56px;
@@ -1293,6 +1306,58 @@ footer span:last-child { text-align: right; }
 .roulette-facts span { padding: 8px 10px; border: 1px solid var(--line); color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .roulette-actions { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
 
+.discovery-shell { min-height: 100vh; background: var(--paper); }
+.discovery-topbar { height: 104px; max-width: 1320px; margin: 0 auto; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+.discovery-back { color: var(--ink); text-decoration: none; }
+.discovery-loading { min-height: 65vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; color: var(--muted); text-align: center; }
+.discovery-loading .loading-dial { margin-bottom: 0; }
+.discovery-loading h1 { margin: 0; color: var(--ink); font-family: Georgia, serif; font-size: 42px; font-weight: 400; }
+.discovery-loading a { color: var(--accent); }
+.discovery-hero { min-height: 335px; display: flex; align-items: center; justify-content: space-between; gap: 50px; padding: 60px max(48px, calc((100vw - 1224px) / 2)); background: var(--paper-deep); overflow: hidden; }
+.discovery-hero > div:first-child { max-width: 720px; position: relative; z-index: 1; }
+.discovery-hero h1 { margin: 18px 0 12px; font-family: Georgia, serif; font-size: clamp(58px, 8vw, 104px); font-weight: 400; letter-spacing: -.055em; line-height: .9; }
+.discovery-hero p { max-width: 620px; margin: 0; color: var(--muted); font-family: Georgia, serif; font-size: 16px; font-style: italic; line-height: 1.6; }
+.discovery-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 27px; }
+.discovery-facts span { padding: 6px 9px; border: 1px solid var(--line); color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.discovery-dial { width: 230px; height: 230px; position: relative; display: grid; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--accent); font-family: Georgia, serif; font-size: 74px; font-style: italic; }
+.discovery-dial::before, .discovery-dial::after { content: ""; position: absolute; background: var(--line); }
+.discovery-dial::before { width: 1px; height: 280px; }
+.discovery-dial::after { width: 280px; height: 1px; }
+.discovery-dial i { width: 168px; height: 168px; position: absolute; border: 1px solid var(--line); border-radius: 50%; }
+.discovery-source, .discovery-tray, .brand-saved-watches { max-width: 1224px; margin: 0 auto; }
+.discovery-source { padding: 62px 0 45px; display: grid; grid-template-columns: minmax(260px, .8fr) 1.2fr; align-items: end; gap: 55px; border-bottom: 1px solid var(--line); }
+.discovery-source h2, .discovery-heading h2 { margin: 8px 0 0; font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; }
+.discovery-source p, .discovery-heading p { margin: 8px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; line-height: 1.5; }
+.discovery-source form { display: grid; grid-template-columns: minmax(200px, 1fr) auto auto; gap: 9px; }
+.discovery-source input { min-width: 0; height: 44px; padding: 0 13px; border: 1px solid var(--line); background: var(--white); font-size: 12px; }
+.discovery-message { max-width: 1224px; margin: 22px auto 0; padding: 13px 15px; border-left: 3px solid var(--green); background: #e8eee8; color: var(--green); font-size: 12px; }
+.discovery-message.is-error { border-color: var(--accent); background: #f0dcd4; color: var(--accent-dark); }
+.discovery-tray, .brand-saved-watches { padding: 68px 0 75px; }
+.brand-saved-watches { padding-top: 0; }
+.discovery-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 25px; }
+.discovery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--ink); border-left: 1px solid var(--line); }
+.discovery-card { min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.25); }
+.discovery-image { height: 260px; position: relative; display: grid; place-items: center; overflow: hidden; background: #e7e3da; color: #aaa396; font-family: Georgia, serif; font-size: 42px; }
+.discovery-image img { width: 100%; height: 100%; position: absolute; inset: 0; object-fit: contain; background: var(--white); }
+.discovery-card-copy { flex: 1; padding: 22px 22px 18px; }
+.discovery-card-copy small { color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.discovery-card-copy h3 { min-height: 52px; margin: 9px 0 7px; font-family: Georgia, serif; font-size: 22px; font-weight: 400; line-height: 1.2; }
+.discovery-card-copy p { margin: 0 0 14px; color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.discovery-card-copy strong { display: block; font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
+.discovery-card-copy a { display: inline-block; margin-top: 14px; color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
+.discovery-card-actions { display: flex; justify-content: space-between; gap: 10px; padding: 16px 22px 20px; border-top: 1px solid var(--line); }
+.discovery-card-actions .text-button { border: 0; background: transparent; cursor: pointer; }
+.discovery-empty { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); text-align: center; }
+.discovery-empty h3 { margin: 0; font-family: Georgia, serif; font-size: 30px; font-weight: 400; }
+.discovery-empty p { margin: 9px 0 22px; color: var(--muted); font-family: Georgia, serif; font-style: italic; }
+.brand-saved-grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-left: 1px solid var(--line); }
+.brand-saved-card { min-width: 0; padding: 15px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; }
+.brand-saved-card > div { height: 145px; position: relative; display: grid; place-items: center; overflow: hidden; background: #e7e3da; color: var(--muted); font-family: Georgia, serif; font-size: 28px; }
+.brand-saved-card img { width: 100%; height: 100%; position: absolute; object-fit: contain; background: var(--white); }
+.brand-saved-card small { display: block; margin-top: 13px; color: var(--accent); font-size: 7px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.brand-saved-card strong { display: block; margin-top: 6px; overflow: hidden; font-family: Georgia, serif; font-size: 17px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.brand-saved-card p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+
 @media (max-width: 1300px) {
   .collector-ledger, .brand-directory, .collection-section { margin-left: 48px; margin-right: 48px; }
   .brand-directory-grid { grid-template-columns: repeat(3, 1fr); }
@@ -1335,6 +1400,18 @@ footer span:last-child { text-align: right; }
   .watch-meta .watch-notes { max-width: 100%; }
   .compare-tray { left: 22px; right: 22px; width: auto; }
   .brand-groups.is-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .discovery-topbar { height: 98px; padding: 0 22px; }
+  .discovery-hero { padding: 48px 22px; }
+  .discovery-dial { width: 150px; height: 150px; font-size: 48px; }
+  .discovery-dial i { width: 108px; height: 108px; }
+  .discovery-dial::before { height: 190px; }
+  .discovery-dial::after { width: 190px; }
+  .discovery-source, .discovery-tray, .brand-saved-watches, .discovery-message { margin-left: 22px; margin-right: 22px; }
+  .discovery-source { grid-template-columns: 1fr; gap: 25px; }
+  .discovery-source form { grid-template-columns: 1fr auto; }
+  .discovery-source form .add-button { grid-column: 1 / -1; }
+  .discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .brand-saved-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 560px) {
@@ -1418,6 +1495,18 @@ footer span:last-child { text-align: right; }
   .roulette-modal { padding: 38px 23px 30px; }
   .roulette-actions { flex-direction: column; }
   .roulette-actions button { min-height: 44px; }
+  .directory-card-edit, .directory-remove { opacity: .75; }
+  .discovery-back { width: auto; padding: 0 10px; font-size: 8px; }
+  .discovery-hero { min-height: 330px; display: block; }
+  .discovery-hero h1 { font-size: 57px; }
+  .discovery-dial { display: none; }
+  .discovery-source form { grid-template-columns: 1fr; }
+  .discovery-source form .outline-button, .discovery-source form .add-button { width: 100%; grid-column: auto; font-size: 9px; }
+  .discovery-heading { align-items: flex-start; flex-direction: column; }
+  .discovery-grid, .brand-saved-grid { grid-template-columns: 1fr; }
+  .discovery-image { height: 290px; }
+  .discovery-card-actions .add-button { width: auto; font-size: 9px; }
+  .discovery-empty .add-button { width: auto; font-size: 9px; }
   footer { grid-template-columns: 1fr 1fr; }
   footer p { display: none; }
 }
