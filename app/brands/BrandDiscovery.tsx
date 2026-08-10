@@ -124,10 +124,14 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ brandId }),
       });
-      const data = await response.json() as BrandState & { fetch?: { found: number; scanned: number; available: number }; error?: string };
+      const data = await response.json() as BrandState & { fetch?: { found: number; scanned: number; available: number; timedOut?: boolean }; error?: string };
       if (!response.ok || !data.brand) throw new Error(data.error || "Couldn’t fetch watches from this brand.");
       setState(data);
-      setMessage(data.fetch?.found
+      setMessage(data.fetch?.timedOut
+        ? data.fetch.found
+          ? `The catalog paused after 35 seconds, but found ${data.fetch.found} new ${data.fetch.found === 1 ? "watch" : "watches"}. You can fetch again for more.`
+          : "The catalog paused after 35 seconds without finding a new watch. You can try again; Crownlog will skip anything already reviewed."
+        : data.fetch?.found
         ? `Found ${data.fetch.found} new ${data.fetch.found === 1 ? "watch" : "watches"}. Keep the ones that belong on your wishlist.`
         : "No unseen watches were found this time. Crownlog remembers everything you already reviewed.");
     } catch (fetchError) {

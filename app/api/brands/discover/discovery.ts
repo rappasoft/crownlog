@@ -48,23 +48,22 @@ function sameStorefront(candidate: URL, storefront: URL) {
   return normalize(candidate.hostname) === normalize(storefront.hostname);
 }
 
-async function readSitemap(url: URL) {
-  const page = await fetchProductPage(publicProductUrl(url.toString()));
+const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
+
+async function readSitemap(url: URL, signal?: AbortSignal) {
+  const page = await fetchProductPage(publicProductUrl(url.toString()), { ...DISCOVERY_PAGE_OPTIONS, signal });
   return { xml: page.html, finalUrl: new URL(page.finalUrl) };
 }
 
-export async function discoverProductUrls(websiteUrl: string) {
+export async function discoverProductUrls(websiteUrl: string, signal?: AbortSignal) {
   const storefront = publicProductUrl(websiteUrl);
   const roots = [new URL("/sitemap.xml", storefront), new URL("/sitemap_index.xml", storefront)];
-  const rootDocuments: Array<{ xml: string; finalUrl: URL }> = [];
-  for (const root of roots) {
-    try {
-      rootDocuments.push(await readSitemap(root));
-    } catch {
-      // Storefronts commonly expose one of these two conventional sitemap paths.
-    }
-  }
+  const rootResults = await Promise.allSettled(roots.map((root) => readSitemap(root, signal)));
+  const rootDocuments = rootResults
+    .filter((result): result is PromiseFulfilledResult<{ xml: string; finalUrl: URL }> => result.status === "fulfilled")
+    .map((result) => result.value);
   if (!rootDocuments.length) {
+    if (signal?.aborted) throw new Error("The brand’s catalog took too long to answer. Try Fetch New Watches again.");
     throw new Error("Crownlog couldn’t read this brand’s public sitemap. The site may block discovery or need a custom adapter.");
   }
 
@@ -86,22 +85,29 @@ export async function discoverProductUrls(websiteUrl: string) {
   const childSitemaps = [...new Set(sitemapUrls)]
     .sort((a, b) => Number(/product/i.test(b)) - Number(/product/i.test(a)))
     .slice(0, 12);
-  for (const sitemapUrl of childSitemaps) {
-    try {
-      const document = await readSitemap(new URL(sitemapUrl));
-      for (const location of sitemapLocations(document.xml)) {
-        try {
-          const url = publicProductUrl(new URL(location, document.finalUrl).toString());
-          if (sameStorefront(url, storefront) && looksLikeProductUrl(url.toString())) {
-            directUrls.push(url.toString());
+  for (let offset = 0; offset < childSitemaps.length && !signal?.aborted; offset += 4) {
+    const results = await Promise.allSettled(
+      childSitemaps.slice(offset, offset + 4).map((sitemapUrl) => readSitemap(new URL(sitemapUrl), signal)),
+    );
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const document = result.value;
+        for (const location of sitemapLocations(document.xml)) {
+          try {
+            const url = publicProductUrl(new URL(location, document.finalUrl).toString());
+            if (sameStorefront(url, storefront) && looksLikeProductUrl(url.toString())) {
+              directUrls.push(url.toString());
+            }
+          } catch {
+            // Ignore malformed or non-public sitemap entries.
           }
-        } catch {
-          // Ignore malformed or non-public sitemap entries.
         }
       }
-    } catch {
-      // One broken child sitemap should not discard products found elsewhere.
     }
+  }
+
+  if (signal?.aborted && !directUrls.length) {
+    throw new Error("The brand’s catalog took too long to answer. Try Fetch New Watches again.");
   }
 
   return [...new Set(directUrls)].slice(0, 2000);

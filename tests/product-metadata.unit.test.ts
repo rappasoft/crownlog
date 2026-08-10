@@ -20,3 +20,22 @@ test("explains when both retailer fetch attempts time out", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("lets catalog discovery opt out of retries", async () => {
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  globalThis.fetch = async () => {
+    attempts += 1;
+    throw new TypeError("fetch failed");
+  };
+
+  try {
+    await assert.rejects(
+      fetchProductPage(new URL("https://slow-retailer.test/watch"), { attempts: 1 }),
+      /fetch failed/i,
+    );
+    assert.equal(attempts, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

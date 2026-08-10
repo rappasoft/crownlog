@@ -13,17 +13,26 @@ export type ProductMetadata = {
 const PRODUCT_PAGE_ATTEMPTS = 2;
 const PRODUCT_PAGE_TIMEOUT_MS = 12000;
 
+type ProductPageFetchOptions = {
+  attempts?: number;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+};
+
 function retryableFetchError(error: unknown) {
   return error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || error.name === "TypeError");
 }
 
-async function fetchRetailerPage(url: URL) {
+async function fetchRetailerPage(url: URL, options: ProductPageFetchOptions = {}) {
+  const attempts = Math.max(1, Math.min(options.attempts ?? PRODUCT_PAGE_ATTEMPTS, 3));
+  const timeoutMs = Math.max(1000, Math.min(options.timeoutMs ?? PRODUCT_PAGE_TIMEOUT_MS, 30000));
   let lastError: unknown;
-  for (let attempt = 1; attempt <= PRODUCT_PAGE_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
+      const timeoutSignal = AbortSignal.timeout(timeoutMs);
       return await fetch(url, {
         redirect: "manual",
-        signal: AbortSignal.timeout(PRODUCT_PAGE_TIMEOUT_MS),
+        signal: options.signal ? AbortSignal.any([options.signal, timeoutSignal]) : timeoutSignal,
         headers: {
           accept: "text/html,application/xhtml+xml",
           "user-agent": "Crownlog Product Import/1.0 (+personal watch index)",
@@ -31,11 +40,15 @@ async function fetchRetailerPage(url: URL) {
       });
     } catch (error) {
       lastError = error;
-      if (!retryableFetchError(error) || attempt === PRODUCT_PAGE_ATTEMPTS) break;
+      if (options.signal?.aborted || !retryableFetchError(error) || attempt === attempts) break;
     }
   }
+  if (options.signal?.aborted) {
+    throw new Error("The catalog scan reached its time limit.");
+  }
   if (lastError instanceof Error && (lastError.name === "TimeoutError" || lastError.name === "AbortError")) {
-    throw new Error("The retailer took too long to respond after two attempts. Try again, or add the details manually.");
+    const attemptLabel = attempts === 1 ? "one attempt" : attempts === 2 ? "two attempts" : `${attempts} attempts`;
+    throw new Error(`The retailer took too long to respond after ${attemptLabel}. Try again, or add the details manually.`);
   }
   throw lastError;
 }
@@ -191,10 +204,10 @@ export function extractProductMetadata(html: string, listingUrl: string): Produc
   };
 }
 
-export async function fetchProductPage(initialUrl: URL) {
+export async function fetchProductPage(initialUrl: URL, options: ProductPageFetchOptions = {}) {
   let url = initialUrl;
   for (let redirects = 0; redirects <= 3; redirects += 1) {
-    const response = await fetchRetailerPage(url);
+    const response = await fetchRetailerPage(url, options);
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
       if (!location || redirects === 3) throw new Error("The retailer redirected too many times.");

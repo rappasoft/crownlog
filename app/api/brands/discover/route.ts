@@ -5,6 +5,9 @@ import { canonicalListingUrl } from "../../../listing-url";
 import { extractProductMetadata, fetchProductPage } from "../../product-metadata";
 import { discoverProductUrls, isLikelyWatchProduct } from "./discovery";
 
+const DISCOVERY_JOB_TIMEOUT_MS = 35000;
+const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
+
 function clean(value: unknown, max = 160) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 }
@@ -57,6 +60,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
     const payload = (await request.json()) as Record<string, unknown>;
     const brandId = clean(payload.brandId, 80);
@@ -67,7 +71,9 @@ export async function POST(request: Request) {
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
     if (!brand.websiteUrl) return Response.json({ error: "Add the brand’s official website before fetching watches." }, { status: 400 });
 
-    const productUrls = await discoverProductUrls(brand.websiteUrl);
+    const controller = new AbortController();
+    deadline = setTimeout(() => controller.abort(), DISCOVERY_JOB_TIMEOUT_MS);
+    const productUrls = await discoverProductUrls(brand.websiteUrl, controller.signal);
     if (!productUrls.length) {
       return Response.json({ error: "No product pages were found in this brand’s public sitemap. The site may need a custom adapter." }, { status: 422 });
     }
@@ -85,11 +91,11 @@ export async function POST(request: Request) {
     let scanned = 0;
     let found = 0;
 
-    for (let offset = 0; offset < Math.min(shuffled.length, 18) && found < 8; offset += 3) {
+    for (let offset = 0; offset < Math.min(shuffled.length, 18) && found < 8 && !controller.signal.aborted; offset += 3) {
       const batch = shuffled.slice(offset, offset + 3);
       const products = await Promise.all(batch.map(async (url) => {
         try {
-          const page = await fetchProductPage(new URL(url));
+          const page = await fetchProductPage(new URL(url), { ...DISCOVERY_PAGE_OPTIONS, signal: controller.signal });
           return extractProductMetadata(page.html, page.finalUrl);
         } catch {
           return null;
@@ -118,9 +124,11 @@ export async function POST(request: Request) {
     }
 
     const state = await brandState(brandId);
-    return Response.json({ ...state, fetch: { found, scanned, available: unseen.length } });
+    return Response.json({ ...state, fetch: { found, scanned, available: unseen.length, timedOut: controller.signal.aborted } });
   } catch (error) {
     return Response.json({ error: errorMessage(error) }, { status: 422 });
+  } finally {
+    if (deadline) clearTimeout(deadline);
   }
 }
 
