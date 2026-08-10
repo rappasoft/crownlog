@@ -270,6 +270,10 @@ Use npm for this project; Yarn is not required.
 
 Another Crownlog development server may already be running. Check the existing Terminal window first. Stop it with `Control+C`, then run `npm run dev` again.
 
+### The console mentions `contentscript.js` or hydration attributes
+
+Warnings that mention `contentscript.js`, Grammarly attributes such as `data-gr-ext-installed`, or ProtonPass attributes such as `data-protonpass-form` come from browser extensions that modify the page before React loads. They are not Crownlog errors. Confirm by opening Crownlog in a private window with extensions disabled.
+
 ### Watches or brands do not appear
 
 - Confirm the Terminal running Crownlog has no errors.

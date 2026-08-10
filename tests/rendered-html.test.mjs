@@ -32,6 +32,15 @@ test("product-page imports fail fast when a retailer stops answering", async () 
   assert.match(collection, /setTimeout\(\(\) => importController\.abort\(\), 15000\)/);
 });
 
+test("layout does not depend on Vinext next/font asset routing", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.doesNotMatch(layout, /next\/font/);
+  assert.match(styles, /--font-geist-sans: -apple-system/);
+  assert.match(styles, /--font-geist-mono: "SFMono-Regular"/);
+});
+
 test("server-renders the Crownlog watch index", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
