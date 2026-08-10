@@ -167,3 +167,20 @@ test("searches the free market-data provider without exposing collection data", 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("wishlist favorites are persisted, filterable, and included in backups", async () => {
+  const [schema, database, watchesRoute, collection, backups] = await Promise.all([
+    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/watches/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/backups/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(schema, /isFavorite: integer\("is_favorite", \{ mode: "boolean" \}\)/);
+  assert.match(database, /ALTER TABLE watches ADD COLUMN is_favorite INTEGER DEFAULT 0 NOT NULL/);
+  assert.match(watchesRoute, /typeof payload\.isFavorite === "boolean"/);
+  assert.match(collection, /value: "favorites"/);
+  assert.match(collection, /favorite-toggle/);
+  assert.match(backups, /isFavorite: item\.status !== "owned" && item\.isFavorite === true/);
+});

@@ -115,6 +115,7 @@ export async function POST(request: Request) {
         reference: clean(item.reference, 100),
         notes: clean(item.notes, 500),
         status: item.status === "owned" ? "owned" as const : "wishlist" as const,
+        isFavorite: item.status !== "owned" && item.isFavorite === true,
         grailScore: Math.min(5, Math.max(1, integer(item.grailScore, 3, 5))),
         currentPriceCents: optionalCents(item.currentPriceCents),
         targetPriceCents: optionalCents(item.targetPriceCents),

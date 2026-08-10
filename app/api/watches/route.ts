@@ -152,6 +152,8 @@ export async function PATCH(request: Request) {
     if (!before) return Response.json({ error: "Watch not found." }, { status: 404 });
     const updates: Partial<typeof watches.$inferInsert> = { updatedAt: new Date().toISOString() };
     if (isStatus(payload.status)) updates.status = payload.status;
+    if (typeof payload.isFavorite === "boolean") updates.isFavorite = before.status === "wishlist" && payload.isFavorite;
+    if (payload.status === "owned") updates.isFavorite = false;
     if ("grailScore" in payload) updates.grailScore = grailScore(payload.grailScore);
     if ("currentPrice" in payload) updates.currentPriceCents = priceInCents(payload.currentPrice);
     if ("targetPrice" in payload) updates.targetPriceCents = priceInCents(payload.targetPrice);

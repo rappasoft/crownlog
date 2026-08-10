@@ -134,6 +134,7 @@ Each watch card provides quick actions:
 
 - Select the watch title to open its full Details panel.
 - Select the grail dots to cycle from 1 to 5.
+- Select the heart on a wishlist watch to favorite it. Favorites are saved in SQLite and appear under the **Favorites** filter.
 - Choose **Wishlist/Purchased** to change collection status.
 - Choose **Details** to edit the full record.
 - Choose **+ Compare** to add it to the comparison tray.
@@ -200,7 +201,7 @@ Values are only totaled when the owned watches use one currency. Crownlog does n
 
 Search covers brand, model, reference, notes, tags, movement, and dial color.
 
-Available filters are All watches, Wishlist, Purchased, At target, and Service due. A Duplicates filter appears when repeated product links are found. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
+Available filters are All watches, Wishlist, Favorites, Purchased, Drafts, At target, and Service due. A Duplicates filter appears when repeated product links are found. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
 
 ### Compare mode
 
@@ -214,8 +215,8 @@ Choose **Watch roulette** when you want Crownlog to pick a watch. Wishlist watch
 
 Open **Vault** in the header.
 
-- **Download JSON** creates a complete Crownlog backup containing brands, watches, Discovery Tray decisions, specifications, ownership data, and price history.
-- **Download CSV** creates a spreadsheet-friendly watch table for Excel, Numbers, or Google Sheets.
+- **Download JSON** creates a complete Crownlog backup containing brands, watches, favorites, Discovery Tray decisions, specifications, ownership data, and price history.
+- **Download CSV** creates a spreadsheet-friendly watch table for Excel, Numbers, or Google Sheets, including favorite status.
 - **Choose JSON** merges a Crownlog backup into the current database. Matching watch IDs are updated, missing records are added, and unrelated local records are not removed.
 
 Create a JSON backup before moving the project, changing computers, or resetting the database.

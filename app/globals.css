@@ -627,7 +627,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .watch-card {
   min-height: 126px;
   display: grid;
-  grid-template-columns: 42px 86px minmax(0, 1fr) 165px auto 32px;
+  grid-template-columns: 42px 86px minmax(0, 1fr) 165px 36px auto 32px;
   align-items: center;
   gap: 25px;
   padding: 16px 15px 16px 0;
@@ -738,6 +738,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .card-market-estimate a:hover { color: var(--accent); }
 
 .status-toggle {
+  grid-column: 6;
   min-width: 116px;
   height: 35px;
   padding: 0 13px;
@@ -759,7 +760,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .status-toggle.is-owned { border-color: var(--green); background: var(--green); color: var(--white); }
 .status-toggle span { font-size: 13px; }
 
+.favorite-toggle {
+  width: 35px;
+  height: 35px;
+  grid-column: 5;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: #aaa69b;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .2s ease, background .2s ease, color .2s ease, transform .2s ease;
+}
+.favorite-toggle:hover, .favorite-toggle:focus-visible { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.favorite-toggle.is-favorite { border-color: var(--accent); background: var(--accent); color: var(--white); }
+
 .remove-button {
+  grid-column: 7;
   width: 32px;
   height: 32px;
   border: 0;
@@ -837,6 +858,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   border-top: 1px solid var(--line);
   border-left: 0;
 }
+.brand-groups.is-grid .favorite-toggle { position: absolute; top: 12px; right: 12px; z-index: 2; background: rgba(247,245,239,.92); }
+.brand-groups.is-grid .favorite-toggle.is-favorite { background: var(--accent); }
 .brand-groups.is-grid .status-toggle { grid-column: 1; justify-self: start; }
 .brand-groups.is-grid .remove-button { grid-column: 2; grid-row: 4; opacity: .65; }
 
@@ -850,9 +873,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .brand-groups.is-table .brand-heading { display: none; }
 .brand-groups.is-table .watch-table-header,
 .brand-groups.is-table .watch-card {
-  min-width: 1010px;
+  min-width: 1065px;
   display: grid;
-  grid-template-columns: 52px 140px minmax(220px, 1fr) 115px 125px 110px 116px 32px;
+  grid-template-columns: 52px 140px minmax(220px, 1fr) 115px 125px 110px 36px 116px 32px;
   align-items: center;
   gap: 14px;
 }
@@ -895,8 +918,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .brand-groups.is-table .watch-table-market a, .brand-groups.is-table .watch-table-market small { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 7px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .brand-groups.is-table .watch-table-market a:hover { color: var(--accent); }
 .brand-groups.is-table .watch-table-checked { display: block; grid-column: 6; grid-row: 1; color: var(--muted); font-size: 8px; }
-.brand-groups.is-table .status-toggle { grid-column: 7; grid-row: 1; min-width: 0; width: 116px; height: 31px; padding: 0 8px; font-size: 8px; }
-.brand-groups.is-table .remove-button { grid-column: 8; grid-row: 1; opacity: .55; }
+.brand-groups.is-table .favorite-toggle { grid-column: 7; grid-row: 1; width: 31px; height: 31px; font-size: 18px; }
+.brand-groups.is-table .status-toggle { grid-column: 8; grid-row: 1; min-width: 0; width: 116px; height: 31px; padding: 0 8px; font-size: 8px; }
+.brand-groups.is-table .remove-button { grid-column: 9; grid-row: 1; opacity: .55; }
 
 .loading-state, .empty-state {
   min-height: 350px;
@@ -1404,6 +1428,7 @@ footer span:last-child { text-align: right; }
   .watch-main { grid-column: 3; grid-row: 1; }
   .price-block { grid-column: 3; width: min(220px, 100%); padding: 8px 0 0; border-top: 1px solid var(--line); border-left: 0; }
   .status-toggle { grid-column: 3; justify-self: start; }
+  .favorite-toggle { grid-column: 4; grid-row: 2; }
   .remove-button { grid-column: 4; grid-row: 1; opacity: .7; }
   .watch-meta { align-items: flex-start; flex-direction: column; gap: 5px; }
   .watch-meta .watch-notes { max-width: 100%; }

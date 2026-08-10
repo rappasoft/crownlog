@@ -32,6 +32,7 @@ export async function ensureDatabase() {
       reference TEXT DEFAULT '' NOT NULL,
       notes TEXT DEFAULT '' NOT NULL,
       status TEXT DEFAULT 'wishlist' NOT NULL,
+      is_favorite INTEGER DEFAULT 0 NOT NULL,
       grail_score INTEGER DEFAULT 3 NOT NULL,
       current_price_cents INTEGER,
       target_price_cents INTEGER,
@@ -96,6 +97,7 @@ export async function ensureDatabase() {
   const columns = await env.DB.prepare("PRAGMA table_info(watches)").all<{ name: string }>();
   const names = new Set(columns.results.map((column) => column.name));
   const upgrades = [];
+  if (!names.has("is_favorite")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN is_favorite INTEGER DEFAULT 0 NOT NULL"));
   if (!names.has("grail_score")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN grail_score INTEGER DEFAULT 3 NOT NULL"));
   if (!names.has("current_price_cents")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN current_price_cents INTEGER"));
   if (!names.has("target_price_cents")) upgrades.push(env.DB.prepare("ALTER TABLE watches ADD COLUMN target_price_cents INTEGER"));

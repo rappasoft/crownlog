@@ -20,6 +20,7 @@ type Watch = {
   reference: string;
   notes: string;
   status: WatchStatus;
+  isFavorite: boolean;
   grailScore: number;
   currentPriceCents: number | null;
   targetPriceCents: number | null;
@@ -122,13 +123,14 @@ type MarketMatch = {
   averagePriceCents: number | null;
 };
 
-type Filter = "all" | WatchStatus | "drafts" | "deals" | "service" | "duplicates";
+type Filter = "all" | WatchStatus | "favorites" | "drafts" | "deals" | "service" | "duplicates";
 type SortMode = "brand" | "grail" | "price-low" | "price-high" | "newest";
 type ViewMode = "list" | "grid" | "table";
 
 const FILTERS: { label: string; value: Filter }[] = [
   { label: "All watches", value: "all" },
   { label: "Wishlist", value: "wishlist" },
+  { label: "Favorites", value: "favorites" },
   { label: "Purchased", value: "owned" },
   { label: "Drafts", value: "drafts" },
   { label: "At target", value: "deals" },
@@ -376,6 +378,7 @@ export default function WatchCollection() {
   const duplicateGroups = useMemo(() => duplicateListingGroups(watches), [watches]);
   const duplicateWatchIds = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((watch) => watch.id))), [duplicateGroups]);
   const duplicateCount = duplicateWatchIds.size;
+  const favoriteCount = watches.filter((watch) => watch.status === "wishlist" && watch.isFavorite).length;
 
   const visibleDrafts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -390,6 +393,7 @@ export default function WatchCollection() {
     return watches.filter((watch) => {
       const matchesFilter = filter === "all"
         || watch.status === filter
+        || (filter === "favorites" && watch.status === "wishlist" && watch.isFavorite)
         || (filter === "deals" && watch.currentPriceCents !== null && watch.targetPriceCents !== null && watch.currentPriceCents <= watch.targetPriceCents)
         || (filter === "service" && isServiceDue(watch))
         || (filter === "duplicates" && duplicateWatchIds.has(watch.id));
@@ -495,7 +499,7 @@ export default function WatchCollection() {
   async function toggleStatus(watch: Watch) {
     const nextStatus: WatchStatus = watch.status === "owned" ? "wishlist" : "owned";
     setWatches((current) =>
-      current.map((item) => (item.id === watch.id ? { ...item, status: nextStatus } : item)),
+      current.map((item) => (item.id === watch.id ? { ...item, status: nextStatus, isFavorite: nextStatus === "owned" ? false : item.isFavorite } : item)),
     );
 
     try {
@@ -507,9 +511,30 @@ export default function WatchCollection() {
       if (!response.ok) throw new Error("Couldn’t update this watch.");
     } catch (updateError) {
       setWatches((current) =>
-        current.map((item) => (item.id === watch.id ? { ...item, status: watch.status } : item)),
+        current.map((item) => (item.id === watch.id ? { ...item, status: watch.status, isFavorite: watch.isFavorite } : item)),
       );
       setError(updateError instanceof Error ? updateError.message : "Couldn’t update this watch.");
+    }
+  }
+
+  async function toggleFavorite(watch: Watch) {
+    const nextFavorite = !watch.isFavorite;
+    setWatches((current) =>
+      current.map((item) => (item.id === watch.id ? { ...item, isFavorite: nextFavorite } : item)),
+    );
+
+    try {
+      const response = await fetch("/api/watches", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: watch.id, isFavorite: nextFavorite }),
+      });
+      if (!response.ok) throw new Error("Couldn’t update this favorite.");
+    } catch (favoriteError) {
+      setWatches((current) =>
+        current.map((item) => (item.id === watch.id ? { ...item, isFavorite: watch.isFavorite } : item)),
+      );
+      setError(favoriteError instanceof Error ? favoriteError.message : "Couldn’t update this favorite.");
     }
   }
 
@@ -629,8 +654,8 @@ export default function WatchCollection() {
       downloadFile(`crownlog-backup-${date}.json`, JSON.stringify(backup, null, 2), "application/json");
       return;
     }
-    const headings = ["Brand", "Model", "Reference", "Status", "Grail score", "Current price", "Target price", "Market estimate", "Market low", "Market high", "Market confidence", "Market samples", "Market provider", "Purchase price", "Currency", "Movement", "Case size", "Case material", "Dial color", "Water resistance", "Tags", "Purchase date", "Last service", "Next service", "Wear count", "Listing URL", "Image URL", "Notes"];
-    const rows = watches.map((watch) => [watch.brand, watch.model, watch.reference, watch.status, watch.grailScore, watch.currentPriceCents === null ? "" : watch.currentPriceCents / 100, watch.targetPriceCents === null ? "" : watch.targetPriceCents / 100, watch.marketPriceCents === null ? "" : watch.marketPriceCents / 100, watch.marketLowCents === null ? "" : watch.marketLowCents / 100, watch.marketHighCents === null ? "" : watch.marketHighCents / 100, watch.marketConfidence, watch.marketSampleSize || "", watch.marketProvider === "the-watch-info" ? "The Watch Info" : watch.marketProvider === "manual" ? "Manual" : "", watch.purchasePriceCents === null ? "" : watch.purchasePriceCents / 100, watch.currency, watch.movement, watch.caseSize, watch.caseMaterial, watch.dialColor, watch.waterResistance, watch.tags, watch.purchaseDate, watch.lastServiceDate, watch.nextServiceDate, watch.wearCount, watch.listingUrl, watch.imageUrl, watch.notes]);
+    const headings = ["Brand", "Model", "Reference", "Status", "Favorite", "Grail score", "Current price", "Target price", "Market estimate", "Market low", "Market high", "Market confidence", "Market samples", "Market provider", "Purchase price", "Currency", "Movement", "Case size", "Case material", "Dial color", "Water resistance", "Tags", "Purchase date", "Last service", "Next service", "Wear count", "Listing URL", "Image URL", "Notes"];
+    const rows = watches.map((watch) => [watch.brand, watch.model, watch.reference, watch.status, watch.isFavorite ? "Yes" : "No", watch.grailScore, watch.currentPriceCents === null ? "" : watch.currentPriceCents / 100, watch.targetPriceCents === null ? "" : watch.targetPriceCents / 100, watch.marketPriceCents === null ? "" : watch.marketPriceCents / 100, watch.marketLowCents === null ? "" : watch.marketLowCents / 100, watch.marketHighCents === null ? "" : watch.marketHighCents / 100, watch.marketConfidence, watch.marketSampleSize || "", watch.marketProvider === "the-watch-info" ? "The Watch Info" : watch.marketProvider === "manual" ? "Manual" : "", watch.purchasePriceCents === null ? "" : watch.purchasePriceCents / 100, watch.currency, watch.movement, watch.caseSize, watch.caseMaterial, watch.dialColor, watch.waterResistance, watch.tags, watch.purchaseDate, watch.lastServiceDate, watch.nextServiceDate, watch.wearCount, watch.listingUrl, watch.imageUrl, watch.notes]);
     downloadFile(`crownlog-watches-${date}.csv`, [headings, ...rows].map((row) => row.map(csvCell).join(",")).join("\n"), "text/csv;charset=utf-8");
   }
 
@@ -1214,7 +1239,7 @@ export default function WatchCollection() {
                 onClick={() => setFilter(item.value)}
                 aria-pressed={filter === item.value}
               >
-                {item.value === "drafts" ? `${item.label} ${discoveries.length}` : item.label}
+                {item.value === "drafts" ? `${item.label} ${discoveries.length}` : item.value === "favorites" ? `${item.label} ${favoriteCount}` : item.label}
               </button>
             ))}
           </div>
@@ -1310,7 +1335,7 @@ export default function WatchCollection() {
         ) : Object.keys(groupedWatches).length ? (
           <div className={`brand-groups is-${viewMode}`}>
             <div className="watch-table-header" aria-hidden="true">
-              <span>Image</span><span>Brand</span><span>Model / reference</span><span>Listing price</span><span>Market estimate</span><span>Last checked</span><span>Status</span><span />
+              <span>Image</span><span>Brand</span><span>Model / reference</span><span>Listing price</span><span>Market estimate</span><span>Last checked</span><span>Favorite</span><span>Status</span><span />
             </div>
             {Object.entries(groupedWatches).map(([brand, brandWatches]) => (
               <section className="brand-group" key={brand} aria-labelledby={`brand-${brand}`}>
@@ -1385,6 +1410,17 @@ export default function WatchCollection() {
                         {watch.marketProvider === "the-watch-info" ? <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">The Watch Info</a> : <small>{watch.marketProvider === "manual" ? "Manual" : "Not tracked"}</small>}
                       </div>
                       <div className="watch-table-checked">{latestPriceCheck(watch) ? new Date(latestPriceCheck(watch)!).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "Never"}</div>
+                      {watch.status === "wishlist" && (
+                        <button
+                          className={"favorite-toggle" + (watch.isFavorite ? " is-favorite" : "")}
+                          onClick={() => void toggleFavorite(watch)}
+                          aria-pressed={watch.isFavorite}
+                          aria-label={(watch.isFavorite ? "Remove " : "Add ") + watch.model + (watch.isFavorite ? " from favorites" : " to favorites")}
+                          title={watch.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <span aria-hidden="true">{watch.isFavorite ? "♥" : "♡"}</span>
+                        </button>
+                      )}
                       <button
                         className={`status-toggle ${watch.status === "owned" ? "is-owned" : ""}`}
                         onClick={() => void toggleStatus(watch)}

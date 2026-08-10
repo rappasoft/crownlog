@@ -23,6 +23,7 @@ export const watches = sqliteTable(
     reference: text("reference").notNull().default(""),
     notes: text("notes").notNull().default(""),
     status: text("status", { enum: ["wishlist", "owned"] }).notNull().default("wishlist"),
+    isFavorite: integer("is_favorite", { mode: "boolean" }).notNull().default(false),
     grailScore: integer("grail_score").notNull().default(3),
     currentPriceCents: integer("current_price_cents"),
     targetPriceCents: integer("target_price_cents"),
