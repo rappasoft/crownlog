@@ -4,7 +4,7 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
     const productUrl = publicProductUrl(payload.listingUrl);
-    const page = await fetchProductPage(productUrl);
+    const page = await fetchProductPage(productUrl, { attempts: 2, timeoutMs: 5000 });
     const product = extractProductMetadata(page.html, page.finalUrl);
     if (!product.name && product.priceCents === null) {
       throw new Error("No recognizable product details were exposed on that page. Fill in the watch manually instead.");

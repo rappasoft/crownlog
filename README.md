@@ -116,7 +116,7 @@ Discovery depends on public retailer metadata. Some websites omit sitemaps, use 
 5. Review the imported brand, model, reference, image, price, currency, and listing URL.
 6. Complete anything the store did not publish and save the watch.
 
-Crownlog reads public product metadata such as JSON-LD and Open Graph tags. A temporarily slow retailer request is retried once. Some stores block automated requests or omit structured information, so every field remains editable.
+Crownlog reads public product metadata such as JSON-LD and Open Graph tags. A temporarily slow retailer request is retried once. Each attempt is limited to five seconds, and the browser cancels any import still pending after 15 seconds, so a blocked store cannot leave **Reading…** active indefinitely. Some stores block automated requests or omit structured information, so every field remains editable.
 
 ### Duplicate watch links
 

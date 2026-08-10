@@ -790,11 +790,14 @@ export default function WatchCollection() {
     setImportMessage("");
     setImportFailed(false);
     setDuplicateImportUrl("");
+    const importController = new AbortController();
+    const importDeadline = setTimeout(() => importController.abort(), 15000);
     try {
       const response = await fetch("/api/import", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ listingUrl }),
+        signal: importController.signal,
       });
       const data = (await response.json()) as { product?: ImportedProduct; error?: string };
       if (!response.ok || !data.product) throw new Error(data.error || "Couldn’t import that product page.");
@@ -813,9 +816,12 @@ export default function WatchCollection() {
       setNewImageUrl(product.imageUrl || "");
       setImportMessage(`Found ${product.name || "the product"}. Review the details, then save it.`);
     } catch (importError) {
-      setImportMessage(importError instanceof Error ? importError.message : "Couldn’t import that product page.");
+      setImportMessage(importController.signal.aborted
+        ? "The retailer didn’t answer within 15 seconds. You can try again or enter the watch details manually."
+        : importError instanceof Error ? importError.message : "Couldn’t import that product page.");
       setImportFailed(true);
     } finally {
+      clearTimeout(importDeadline);
       setImportingWatch(false);
     }
   }

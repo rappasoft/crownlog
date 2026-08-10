@@ -23,6 +23,15 @@ test("collection exposes fetched watches as reviewable drafts", async () => {
   assert.match(discoveryRoute, /where\(eq\(brandDiscoveries\.status, "draft"\)\)/);
 });
 
+test("product-page imports fail fast when a retailer stops answering", async () => {
+  const importRoute = await readFile(new URL("../app/api/import/route.ts", import.meta.url), "utf8");
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+
+  assert.match(importRoute, /fetchProductPage\(productUrl, \{ attempts: 2, timeoutMs: 5000 \}\)/);
+  assert.match(collection, /const importController = new AbortController\(\)/);
+  assert.match(collection, /setTimeout\(\(\) => importController\.abort\(\), 15000\)/);
+});
+
 test("server-renders the Crownlog watch index", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
