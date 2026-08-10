@@ -126,6 +126,8 @@ Brand names are matched without regard to capitalization. Adding `Timex`, `TIMEX
 
 Crownlog reads public product metadata such as JSON-LD and Open Graph tags. A temporarily slow retailer request is retried once. Each attempt is limited to five seconds, and the browser cancels any import still pending after 15 seconds, so a blocked store cannot leave **Reading…** active indefinitely. Some stores block automated requests or omit structured information, so every field remains editable.
 
+Saved watches with a product URL show **Open listing ↗** directly in list, grid, and table views. It opens the retailer page in a new browser tab; manually entered watches without a URL simply omit the action.
+
 ### Duplicate watch links
 
 Crownlog compares product links without common advertising trackers such as `utm_*` and `srsltid`:

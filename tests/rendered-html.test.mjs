@@ -24,6 +24,15 @@ test("collection exposes fetched watches as reviewable drafts", async () => {
   assert.match(discoveryRoute, /where\(eq\(brandDiscoveries\.status, "draft"\)\)/);
 });
 
+test("saved watches expose their retailer listing in every collection view", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+
+  assert.match(collection, /watch\.listingUrl &&/);
+  assert.match(collection, /className="watch-listing-link"/);
+  assert.match(collection, /target="_blank"/);
+  assert.match(collection, /Open listing/);
+});
+
 test("product-page imports fail fast when a retailer stops answering", async () => {
   const importRoute = await readFile(new URL("../app/api/import/route.ts", import.meta.url), "utf8");
   const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");

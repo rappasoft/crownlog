@@ -646,6 +646,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .watch-main h4 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: -.015em; }
 .watch-title-button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-align: left; cursor: pointer; }
 .watch-title-button:hover { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.watch-listing-link {
+  min-height: 25px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.watch-listing-link:hover { border-color: var(--accent); color: var(--accent); }
 .watch-meta { display: flex; gap: 16px; align-items: center; margin-top: 8px; }
 .watch-meta span { color: var(--muted); font-size: 9px; letter-spacing: .11em; text-transform: uppercase; }
 .watch-meta .watch-notes { max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .02em; text-transform: none; }
@@ -896,6 +912,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .brand-groups.is-table .watch-grid-brand, .brand-groups.is-table .watch-meta, .brand-groups.is-table .watch-badges { display: none; }
 .brand-groups.is-table .watch-main h4 { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .brand-groups.is-table .watch-title-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-groups.is-table .watch-listing-link { min-height: 0; margin: 3px 8px 0 0; padding: 0; border: 0; font-size: 7px; }
 .brand-groups.is-table .watch-table-reference { display: block; margin-top: 3px; overflow: hidden; color: var(--muted); font-size: 7px; letter-spacing: .08em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .brand-groups.is-table .price-block { grid-column: 4; grid-row: 1; padding: 0; border: 0; }
 .brand-groups.is-table .price-block strong { font-size: 14px; }

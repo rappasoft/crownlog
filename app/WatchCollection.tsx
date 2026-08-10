@@ -1459,6 +1459,11 @@ export default function WatchCollection() {
                       <div className="watch-main">
                         <span className="watch-grid-brand">{watch.brand}</span>
                         <h4><button className="watch-title-button" onClick={() => openPriceWatch(watch)}>{watch.model}</button></h4>
+                        {watch.listingUrl && (
+                          <a className="watch-listing-link" href={watch.listingUrl} target="_blank" rel="noreferrer" aria-label={`Open the listing for ${watch.brand} ${watch.model} in a new tab`}>
+                            Open listing <span aria-hidden="true">↗</span>
+                          </a>
+                        )}
                         <span className="watch-table-reference">{watch.reference ? `Ref. ${watch.reference}` : "No reference"}</span>
                         <div className="watch-meta">
                           {watch.reference && <span>REF. {watch.reference}</span>}

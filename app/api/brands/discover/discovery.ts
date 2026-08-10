@@ -1,4 +1,4 @@
-import { fetchProductPage, publicProductUrl, type ProductMetadata } from "../../product-metadata";
+import { publicProductUrl, type ProductMetadata } from "../../product-metadata";
 
 const NON_WATCH_PRODUCT = /\b(?:straps?|bands?|bracelets?|buckles?|clasps?|spring[- ]?bars?|watch[- ]?(?:rolls?|boxes?|cases?|winders?|tools?)|gift[- ]?cards?|warrant(?:y|ies)|services?|repairs?|pens?|pencils?|rings?|earrings?|necklaces?|cufflinks?|alphabets?|clocks?|sunglasses?|shirts?|t-shirts?|hoodies?|hats?|caps?|bags?|totes?|wallets?)\b/i;
 const WATCH_EVIDENCE = /\b(?:watch(?:es)?|timepieces?|wristwatches?|chronographs?|dive watch|diver(?:'s)? watch|watchmaking|horology|automatic movement|mechanical movement|quartz movement|calib(?:er|re)|power reserve|watch dial|dial|bezel|case diameter|case size|lug-to-lug|sapphire crystal|water[- ]resistan(?:t|ce)|meters? water resistance)\b/i;
@@ -48,7 +48,6 @@ function sameStorefront(candidate: URL, storefront: URL) {
   return normalize(candidate.hostname) === normalize(storefront.hostname);
 }
 
-const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
 const SITEMAP_READ_LIMIT = 5_000_000;
 
 async function readSitemap(url: URL, signal?: AbortSignal) {
