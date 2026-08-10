@@ -41,6 +41,16 @@ test("layout does not depend on Vinext next/font asset routing", async () => {
   assert.match(styles, /--font-geist-mono: "SFMono-Regular"/);
 });
 
+test("header logos do not trigger Vinext image preloads", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+  const discovery = await readFile(new URL("../app/brands/BrandDiscovery.tsx", import.meta.url), "utf8");
+
+  assert.doesNotMatch(collection, /brand-lockup-image[^>]+priority/);
+  assert.doesNotMatch(discovery, /brand-lockup-image[^>]+priority/);
+  assert.doesNotMatch(collection, /brand-lockup-image[^>]+loading="eager"/);
+  assert.doesNotMatch(discovery, /brand-lockup-image[^>]+loading="eager"/);
+});
+
 test("server-renders the Crownlog watch index", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);

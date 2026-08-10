@@ -169,7 +169,7 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
     <main className="discovery-shell">
       <header className="discovery-topbar">
         <a className="brand-lockup" href="/" aria-label="Back to Crownlog">
-          <Image className="brand-lockup-image" src="/og.png" alt="Crownlog — Personal Watch Index" width={210} height={110} priority />
+          <Image className="brand-lockup-image" src="/og.png" alt="Crownlog — Personal Watch Index" width={210} height={110} />
         </a>
         <a className="outline-button discovery-back" href="/">← Collection</a>
       </header>

@@ -1054,7 +1054,7 @@ export default function WatchCollection() {
     <main className="app-shell">
       <header className="topbar">
         <a className="brand-lockup" href="#top" aria-label="Crownlog home">
-          <Image className="brand-lockup-image" src="/og.png" alt="Crownlog — Personal Watch Index" width={210} height={110} priority />
+          <Image className="brand-lockup-image" src="/og.png" alt="Crownlog — Personal Watch Index" width={210} height={110} />
         </a>
         <div className="topbar-actions">
           <button className="guide-button" onClick={() => setShowVault(true)}>Vault</button>
