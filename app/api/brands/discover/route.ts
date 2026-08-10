@@ -11,6 +11,33 @@ const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
 function clean(value: unknown, max = 160) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, max) : "";
 }
+function priceInCents(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = typeof value === "number" ? value : Number(String(value).replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(amount) || amount < 0 || amount > 10000000) return null;
+  return Math.round(amount * 100);
+}
+
+function safeImageUrl(value: unknown) {
+  const input = clean(value, 1500);
+  if (!input) return "";
+  try {
+    const parsed = new URL(input);
+    return parsed.protocol === "https:" ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function safeCurrency(value: unknown) {
+  const currency = clean(value, 3).toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+}
+
+function grailScore(value: unknown) {
+  const score = Number(value);
+  return Number.isInteger(score) && score >= 1 && score <= 5 ? score : 3;
+}
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
@@ -152,6 +179,16 @@ export async function PATCH(request: Request) {
 
     const [brand] = await db.select().from(brands).where(eq(brands.id, discovery.brandId)).limit(1);
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
+    const details = payload.details && typeof payload.details === "object" && !Array.isArray(payload.details)
+      ? payload.details as Record<string, unknown>
+      : {};
+    const model = clean(details.model, 120) || discovery.name;
+    const reference = "reference" in details ? clean(details.reference, 100) : discovery.reference;
+    const imageUrl = "imageUrl" in details ? safeImageUrl(details.imageUrl) : discovery.imageUrl;
+    const currentPriceCents = "currentPrice" in details ? priceInCents(details.currentPrice) : discovery.priceCents;
+    const currency = "currency" in details ? safeCurrency(details.currency) : discovery.currency;
+    if (!model) return Response.json({ error: "A model name is required." }, { status: 400 });
+
     const existingWatches = await db.select().from(watches);
     let watch = existingWatches.find((item) => canonicalListingUrl(item.listingUrl) === discovery.canonicalUrl);
     let alreadySaved = Boolean(watch);
@@ -159,20 +196,37 @@ export async function PATCH(request: Request) {
       [watch] = await db.insert(watches).values({
         id: crypto.randomUUID(),
         brand: brand.name,
-        model: discovery.name,
-        reference: discovery.reference,
+        model,
+        reference,
+        notes: clean(details.notes, 500),
         status: "wishlist",
-        currentPriceCents: discovery.priceCents,
-        currency: discovery.currency,
+        grailScore: grailScore(details.grailScore),
+        currentPriceCents,
+        targetPriceCents: priceInCents(details.targetPrice),
+        currency,
         listingUrl: discovery.sourceUrl,
-        imageUrl: discovery.imageUrl,
+        imageUrl,
+        movement: clean(details.movement, 120),
+        caseSize: clean(details.caseSize, 40),
+        caseMaterial: clean(details.caseMaterial, 80),
+        dialColor: clean(details.dialColor, 80),
+        waterResistance: clean(details.waterResistance, 60),
+        tags: clean(details.tags, 300),
       }).returning();
-      if (discovery.priceCents !== null) {
-        await db.insert(priceHistory).values({ id: crypto.randomUUID(), watchId: watch.id, priceCents: discovery.priceCents });
+      if (currentPriceCents !== null) {
+        await db.insert(priceHistory).values({ id: crypto.randomUUID(), watchId: watch.id, priceCents: currentPriceCents });
       }
       alreadySaved = false;
     }
-    const [updated] = await db.update(brandDiscoveries).set({ status: "kept", updatedAt: new Date().toISOString() }).where(eq(brandDiscoveries.id, id)).returning();
+    const [updated] = await db.update(brandDiscoveries).set({
+      name: model,
+      reference,
+      imageUrl,
+      priceCents: currentPriceCents,
+      currency,
+      status: "kept",
+      updatedAt: new Date().toISOString(),
+    }).where(eq(brandDiscoveries.id, id)).returning();
     return Response.json({ discovery: updated, watch, alreadySaved });
   } catch (error) {
     return Response.json({ error: errorMessage(error) }, { status: 500 });

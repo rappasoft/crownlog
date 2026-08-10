@@ -169,12 +169,13 @@ test("searches the free market-data provider without exposing collection data", 
 });
 
 test("wishlist favorites are persisted, filterable, and included in backups", async () => {
-  const [schema, database, watchesRoute, collection, backups] = await Promise.all([
+  const [schema, database, watchesRoute, collection, backups, discoverRoute] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/index.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/watches/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/backups/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/brands/discover/route.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(schema, /isFavorite: integer\("is_favorite", \{ mode: "boolean" \}\)/);
@@ -186,5 +187,8 @@ test("wishlist favorites are persisted, filterable, and included in backups", as
   assert.doesNotMatch(collection, /className="filter-tabs"/);
   assert.match(collection, /fetchDraftsForAllBrands/);
   assert.match(collection, /Fetch all drafts/);
+  assert.match(collection, /editingDraft/);
+  assert.match(collection, /Edit before adding/);
+  assert.match(discoverRoute, /payload\.details/);
   assert.match(backups, /isFavorite: item\.status !== "owned" && item\.isFavorite === true/);
 });

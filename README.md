@@ -90,13 +90,15 @@ Each followed brand has a dedicated page. Open a brand card from the main direct
 2. Choose **Fetch new watches**.
 3. Crownlog reads public sitemap entries and a small random batch of likely product pages, filtering out accessories, jewelry, gift cards, and other non-watch products.
 4. Review the imported image, model, reference, price, and original product link in the **Discovery Tray**.
-5. Choose **Keep + wishlist** to create a normal wishlist watch, or **Dismiss** to hide that product permanently.
+5. Choose **Keep + wishlist** to accept the fetched details unchanged, or choose **Dismiss** to hide that product permanently.
 
 Draft, kept, and dismissed products are stored separately from the wishlist. Repeated fetches skip previously reviewed URLs and watches already saved in Crownlog. The brand page also shows watches from that brand already in the collection.
 
 All unreviewed discoveries also appear under **Collection → Drafts**. This gives you one inbox across every brand, with the same **Keep + wishlist** and **Dismiss** actions available on individual brand pages.
-To refresh every eligible brand at once, choose **Fetch all drafts** beside **Brands I follow**. Crownlog scans official brand websites one at a time, shows live progress, continues past sites that block discovery, and reports skipped retailers or brands without websites. Large directories can take several minutes.
 
+In **Collection → Drafts**, select a draft title or **Edit before adding** to correct its fields and add notes, a target price, grail score, specifications, and tags. Choose **Save details + wishlist** when it is ready.
+
+To refresh every eligible brand at once, choose **Fetch all drafts** beside **Brands I follow**. Crownlog scans official brand websites one at a time, shows live progress, continues past sites that block discovery, and reports skipped retailers or brands without websites. Large directories can take several minutes.
 
 Discovery depends on public retailer metadata. Some websites omit sitemaps, use unusual URLs, require JavaScript, or block automated requests. Crownlog reports those cases instead of adding incomplete records; individual sites may require future custom adapters.
 

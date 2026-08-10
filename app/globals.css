@@ -1361,10 +1361,13 @@ footer span:last-child { text-align: right; }
 .discovery-card-copy { flex: 1; padding: 22px 22px 18px; }
 .discovery-card-copy small { color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .discovery-card-copy h3 { min-height: 52px; margin: 9px 0 7px; font-family: Georgia, serif; font-size: 22px; font-weight: 400; line-height: 1.2; }
+.draft-title-button { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.draft-title-button:hover { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.draft-edit-button { min-height: 34px; padding: 0 10px; font-size: 7px; }
 .discovery-card-copy p { margin: 0 0 14px; color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .discovery-card-copy strong { display: block; font-family: Georgia, serif; font-size: 20px; font-weight: 400; }
 .discovery-card-copy a { display: inline-block; margin-top: 14px; color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
-.discovery-card-actions { display: flex; justify-content: space-between; gap: 10px; padding: 16px 22px 20px; border-top: 1px solid var(--line); }
+.discovery-card-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 22px 20px; border-top: 1px solid var(--line); }
 .discovery-card-actions .text-button { border: 0; background: transparent; cursor: pointer; }
 .discovery-empty { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); text-align: center; }
 .discovery-empty h3 { margin: 0; font-family: Georgia, serif; font-size: 30px; font-weight: 400; }

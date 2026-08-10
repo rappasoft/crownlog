@@ -248,6 +248,9 @@ export default function WatchCollection() {
   const [draftMessage, setDraftMessage] = useState("");
   const [fetchingAllDrafts, setFetchingAllDrafts] = useState(false);
   const [bulkDiscoveryMessage, setBulkDiscoveryMessage] = useState("");
+  const [editingDraft, setEditingDraft] = useState<DiscoveryDraft | null>(null);
+  const [savingDraftDetails, setSavingDraftDetails] = useState(false);
+  const [draftEditError, setDraftEditError] = useState("");
   const watchFormRef = useRef<HTMLFormElement>(null);
   const priceFormRef = useRef<HTMLFormElement>(null);
   const autoMarketRefreshStarted = useRef(false);
@@ -538,6 +541,51 @@ export default function WatchCollection() {
       setError(reviewError instanceof Error ? reviewError.message : "Couldn’t update this draft.");
     } finally {
       setWorkingDraftId("");
+    }
+  }
+
+  async function keepEditedDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingDraft) return;
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    setSavingDraftDetails(true);
+    setDraftEditError("");
+    try {
+      const response = await fetch("/api/brands/discover", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: editingDraft.id,
+          action: "keep",
+          details: {
+            model: formData.get("model"),
+            reference: formData.get("reference"),
+            imageUrl: formData.get("imageUrl"),
+            currentPrice: formData.get("currentPrice"),
+            targetPrice: formData.get("targetPrice"),
+            currency: formData.get("currency"),
+            notes: formData.get("notes"),
+            grailScore: formData.get("grailScore"),
+            movement: formData.get("movement"),
+            caseSize: formData.get("caseSize"),
+            caseMaterial: formData.get("caseMaterial"),
+            dialColor: formData.get("dialColor"),
+            waterResistance: formData.get("waterResistance"),
+            tags: formData.get("tags"),
+          },
+        }),
+      });
+      const data = await response.json() as { alreadySaved?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error || "Couldn’t add this draft.");
+      setDiscoveries((current) => current.filter((item) => item.id !== editingDraft.id));
+      await loadData();
+      setEditingDraft(null);
+      setDraftMessage(data.alreadySaved ? editingDraft.name + " was already saved, so the draft was cleared." : editingDraft.name + " was edited and added to your wishlist.");
+    } catch (draftError) {
+      setDraftEditError(draftError instanceof Error ? draftError.message : "Couldn’t add this draft.");
+    } finally {
+      setSavingDraftDetails(false);
     }
   }
 
@@ -1357,7 +1405,7 @@ export default function WatchCollection() {
                     )}</div>
                     <div className="discovery-card-copy">
                       <small>{draft.brandName}</small>
-                      <h3>{draft.name}</h3>
+                      <h3><button className="draft-title-button" onClick={() => { setDraftEditError(""); setEditingDraft(draft); }}>{draft.name}</button></h3>
                       <p>{draft.reference ? `Ref. ${draft.reference}` : "Reference unavailable"}</p>
                       <strong>{draft.priceCents === null ? "Price unavailable" : formatPrice(draft.priceCents, draft.currency)}</strong>
                       <a href={draft.sourceUrl} target="_blank" rel="noreferrer">Open product page ↗</a>
@@ -1365,6 +1413,7 @@ export default function WatchCollection() {
                     </div>
                     <div className="discovery-card-actions">
                       <button className="text-button is-danger" disabled={workingDraftId === draft.id} onClick={() => void reviewDraft(draft, "dismiss")}>Dismiss</button>
+                      <button className="outline-button draft-edit-button" disabled={workingDraftId === draft.id} onClick={() => { setDraftEditError(""); setEditingDraft(draft); }}>Edit before adding</button>
                       <button className="add-button" disabled={workingDraftId === draft.id} onClick={() => void reviewDraft(draft, "keep")}>{workingDraftId === draft.id ? "Saving…" : "Keep + wishlist"}</button>
                     </div>
                   </article>
@@ -1545,6 +1594,57 @@ export default function WatchCollection() {
               <article><span>08</span><h3>Data vault</h3><p>Use <strong>Vault</strong> to download a backup, export a CSV, or merge a Crownlog backup into the collection.</p></article>
               <article><span>09</span><h3>Watch roulette</h3><p>Use <strong>Watch roulette</strong> beside the collection heading whenever you want Crownlog to pick one.</p></article>
             </div>
+          </section>
+        </div>
+      )}
+
+      {editingDraft && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+          if (!savingDraftDetails && event.target === event.currentTarget) setEditingDraft(null);
+        }}>
+          <section className="watch-modal details-modal draft-edit-modal" role="dialog" aria-modal="true" aria-labelledby="draft-edit-title">
+            <div className="modal-header">
+              <div>
+                <span className="eyebrow"><span /> EDIT DRAFT</span>
+                <h2 id="draft-edit-title">{editingDraft.brandName} / {editingDraft.name}</h2>
+              </div>
+              <button disabled={savingDraftDetails} onClick={() => setEditingDraft(null)} aria-label="Close draft editor">×</button>
+            </div>
+            <form onSubmit={keepEditedDraft}>
+              <div className="field-row">
+                <label><span>Model *</span><input name="model" required defaultValue={editingDraft.name} /></label>
+                <label><span>Reference</span><input name="reference" defaultValue={editingDraft.reference} /></label>
+              </div>
+              <div className="field-row">
+                <label><span>Current price</span><input name="currentPrice" inputMode="decimal" defaultValue={editingDraft.priceCents === null ? "" : editingDraft.priceCents / 100} /></label>
+                <label><span>Target price</span><input name="targetPrice" inputMode="decimal" placeholder="Optional" /></label>
+              </div>
+              <div className="field-row">
+                <label><span>Currency</span><select name="currency" defaultValue={editingDraft.currency}>{["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY"].map((currency) => <option key={currency}>{currency}</option>)}</select></label>
+                <label><span>Grail score</span><select name="grailScore" defaultValue="3">{[1, 2, 3, 4, 5].map((score) => <option key={score} value={score}>{score} / 5</option>)}</select></label>
+              </div>
+              <label><span>Image URL</span><input name="imageUrl" type="url" defaultValue={editingDraft.imageUrl} placeholder="https://…" /></label>
+              <label><span>Notes</span><textarea name="notes" rows={3} placeholder="Why it caught your eye, dial variant, preferred configuration…" /></label>
+              <div className="detail-section-heading"><span>SPECIFICATIONS</span></div>
+              <div className="field-row">
+                <label><span>Movement</span><input name="movement" placeholder="e.g. Miyota 9039 automatic" /></label>
+                <label><span>Case size</span><input name="caseSize" placeholder="e.g. 38 mm" /></label>
+              </div>
+              <div className="field-row">
+                <label><span>Case material</span><input name="caseMaterial" placeholder="e.g. Titanium" /></label>
+                <label><span>Dial color</span><input name="dialColor" placeholder="e.g. Salmon" /></label>
+              </div>
+              <div className="field-row">
+                <label><span>Water resistance</span><input name="waterResistance" placeholder="e.g. 100 m" /></label>
+                <label><span>Tags</span><input name="tags" placeholder="microbrand, diver, summer" /></label>
+              </div>
+              <a className="listing-link" href={editingDraft.sourceUrl} target="_blank" rel="noreferrer">Open original product page ↗</a>
+              {draftEditError && <div className="price-check-status is-error" role="alert">{draftEditError}</div>}
+              <div className="modal-actions">
+                <button type="button" className="cancel-button" disabled={savingDraftDetails} onClick={() => setEditingDraft(null)}>Cancel</button>
+                <button type="submit" className="add-button" disabled={savingDraftDetails}>{savingDraftDetails ? "Adding…" : "Save details + wishlist"}</button>
+              </div>
+            </form>
           </section>
         </div>
       )}
