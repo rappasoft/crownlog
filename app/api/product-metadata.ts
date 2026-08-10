@@ -161,6 +161,12 @@ function metaContent(html: string, key: string, max = 240) {
   return "";
 }
 
+function attributeContent(html: string, key: string, max = 240) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = html.match(new RegExp(`${escaped}=["']([^"']*)["']`, "i"));
+  return match ? clean(match[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'"), max) : "";
+}
+
 export function extractProductMetadata(html: string, listingUrl: string): ProductMetadata {
   const jsonLd = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   for (const match of html.matchAll(jsonLd)) {
@@ -191,16 +197,18 @@ export function extractProductMetadata(html: string, listingUrl: string): Produc
   const rawCurrency = metaContent(html, "product:price:currency") || metaContent(html, "og:price:currency") || metaContent(html, "priceCurrency");
   const category = metaContent(html, "product:category") || metaContent(html, "category");
   const description = metaContent(html, "og:description", 1000) || metaContent(html, "description", 1000);
+  const preloadName = attributeContent(html, "data-preload-product-name-wout-brand", 120);
+  const preloadBrand = attributeContent(html, "data-preload-product-brand-name", 80);
   return {
-    name: metaContent(html, "og:title") || clean(html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1], 120),
-    brand: metaContent(html, "product:brand") || metaContent(html, "brand"),
+    name: metaContent(html, "og:title") || preloadName || attributeContent(html, "data-preload-product-name", 120) || clean(html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1], 120),
+    brand: metaContent(html, "product:brand") || metaContent(html, "brand") || preloadBrand,
     reference: metaContent(html, "product:retailer_item_id") || metaContent(html, "sku"),
     ...(category ? { category } : {}),
     ...(description ? { description } : {}),
     priceCents: amountInCents(rawPrice),
     currency: safeCurrency(rawCurrency),
     listingUrl,
-    imageUrl: productImageUrl(metaContent(html, "og:image", 1500) || metaContent(html, "twitter:image", 1500), listingUrl),
+    imageUrl: productImageUrl(metaContent(html, "og:image", 1500) || metaContent(html, "twitter:image", 1500) || attributeContent(html, "data-preload-product-image", 1500), listingUrl),
   };
 }
 

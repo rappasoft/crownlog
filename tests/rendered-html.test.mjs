@@ -19,7 +19,8 @@ test("collection exposes fetched watches as reviewable drafts", async () => {
   assert.match(collection, /label: "Drafts", value: "drafts"/);
   assert.match(collection, /fetch\("\/api\/brands\/discover", \{ cache: "no-store" \}\)/);
   assert.match(collection, /Keep \+ wishlist/);
-  assert.match(discoveryRoute, /brandName: brands\.name/);
+  assert.match(discoveryRoute, /productBrand: brandDiscoveries\.productBrand/);
+  assert.match(discoveryRoute, /brandName: productBrand \|\| parentBrandName/);
   assert.match(discoveryRoute, /where\(eq\(brandDiscoveries\.status, "draft"\)\)/);
 });
 

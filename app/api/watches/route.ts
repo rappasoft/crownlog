@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
-import { ensureDatabase, getDb } from "../../../db";
-import { brands, priceHistory, watches } from "../../../db/schema";
+import { canonicalBrandName, ensureDatabase, getDb } from "../../../db";
+import { priceHistory, watches } from "../../../db/schema";
 import { canonicalListingUrl } from "../../listing-url";
 
 type Status = "wishlist" | "owned";
@@ -122,10 +122,10 @@ export async function POST(request: Request) {
         );
       }
     }
-    await db.insert(brands).values({ id: crypto.randomUUID(), name: brand }).onConflictDoNothing();
+    const canonicalBrand = await canonicalBrandName(brand);
     const [watch] = await db
       .insert(watches)
-      .values({ id: crypto.randomUUID(), brand, model, reference, notes, status, grailScore: score, currentPriceCents, targetPriceCents, currency, listingUrl, imageUrl, movement, caseSize, caseMaterial, dialColor, waterResistance, tags, purchasePriceCents, purchaseDate, lastServiceDate, nextServiceDate })
+      .values({ id: crypto.randomUUID(), brand: canonicalBrand, model, reference, notes, status, grailScore: score, currentPriceCents, targetPriceCents, currency, listingUrl, imageUrl, movement, caseSize, caseMaterial, dialColor, waterResistance, tags, purchasePriceCents, purchaseDate, lastServiceDate, nextServiceDate })
       .returning();
     const history: Array<typeof priceHistory.$inferSelect> = [];
     if (currentPriceCents !== null) {
@@ -163,8 +163,7 @@ export async function PATCH(request: Request) {
     if ("brand" in payload) {
       const brand = clean(payload.brand, 80);
       if (brand) {
-        updates.brand = brand;
-        await db.insert(brands).values({ id: crypto.randomUUID(), name: brand }).onConflictDoNothing();
+        updates.brand = await canonicalBrandName(brand);
       }
     }
     if ("model" in payload) {

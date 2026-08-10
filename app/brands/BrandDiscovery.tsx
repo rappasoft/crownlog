@@ -16,6 +16,7 @@ type Brand = {
 type Discovery = {
   id: string;
   brandId: string;
+  productBrand: string;
   name: string;
   reference: string;
   imageUrl: string;
@@ -101,7 +102,7 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
       const data = await response.json() as { brand?: Brand; error?: string };
       if (!response.ok || !data.brand) throw new Error(data.error || "Couldn’t save the website.");
       setState((current) => current ? { ...current, brand: data.brand! } : current);
-      setMessage("Official website saved. Crownlog is ready to look for watches.");
+      setMessage("Catalog website saved. Crownlog is ready to look for watches.");
       setError("");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Couldn’t save the website.");
@@ -112,11 +113,11 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
 
   async function fetchWatches() {
     if (!state?.brand.websiteUrl) {
-      setError("Add the official brand website first.");
+      setError("Add a catalog website first.");
       return;
     }
     setFetching(true);
-    setMessage("Looking through the brand’s public product pages…");
+    setMessage(`Looking through ${state.brand.category === "retailer" ? "the retailer’s" : "the brand’s"} public product pages…`);
     setError("");
     try {
       const response = await fetch("/api/brands/discover", {
@@ -182,16 +183,16 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
         <>
           <section className="discovery-hero">
             <div>
-              <span className="eyebrow"><span /> BRAND DISCOVERY</span>
+              <span className="eyebrow"><span /> {state.brand.category === "retailer" ? "RETAILER DISCOVERY" : "BRAND DISCOVERY"}</span>
               <h1>{state.brand.name}</h1>
-              <p>{state.brand.notes || "Turn the brand’s catalog into a draft wishlist, one discovery at a time."}</p>
+              <p>{state.brand.notes || `Turn ${state.brand.category === "retailer" ? "this retailer’s" : "the brand’s"} catalog into a draft wishlist, one discovery at a time.`}</p>
               <div className="discovery-facts"><span>{state.savedWatches.length} saved</span><span>{drafts.length} drafts</span><span>{kept} kept</span><span>{dismissed} dismissed</span></div>
             </div>
             <div className="discovery-dial" aria-hidden="true"><span>{state.brand.name.charAt(0)}</span><i /></div>
           </section>
 
           <section className="discovery-source" aria-labelledby="discovery-source-title">
-            <div><span className="section-number">SOURCE</span><h2 id="discovery-source-title">Where should Crownlog look?</h2><p>Use the brand’s official public website. Fetches stay local and only run when you press the button.</p></div>
+            <div><span className="section-number">SOURCE</span><h2 id="discovery-source-title">Where should Crownlog look?</h2><p>Use a public brand or retailer catalog. Fetches stay local and only run when you press the button.</p></div>
             <form onSubmit={saveWebsite}>
               <input name="websiteUrl" type="url" required defaultValue={state.brand.websiteUrl} placeholder="https://www.citizenwatch.com/" aria-label="Official brand website" />
               <button className="outline-button" disabled={savingWebsite}>{savingWebsite ? "Saving…" : "Save website"}</button>
@@ -207,17 +208,17 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
               <div className="discovery-grid">
                 {drafts.map((discovery) => (
                   <article className="discovery-card" key={discovery.id}>
-                    <div className="discovery-image"><span>{state.brand.name.charAt(0)}</span>{discovery.imageUrl && (
+                    <div className="discovery-image"><span>{(discovery.productBrand || state.brand.name).charAt(0)}</span>{discovery.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={discovery.imageUrl} alt={`${state.brand.name} ${discovery.name}`} referrerPolicy="no-referrer" />
+                      <img src={discovery.imageUrl} alt={`${discovery.productBrand || state.brand.name} ${discovery.name}`} referrerPolicy="no-referrer" />
                     )}</div>
-                    <div className="discovery-card-copy"><small>{state.brand.name}</small><h3>{discovery.name}</h3><p>{discovery.reference ? `Ref. ${discovery.reference}` : "Reference unavailable"}</p><strong>{formatPrice(discovery.priceCents, discovery.currency)}</strong><a href={discovery.sourceUrl} target="_blank" rel="noreferrer">Open product page ↗</a></div>
+                    <div className="discovery-card-copy"><small>{discovery.productBrand || state.brand.name}{state.brand.category === "retailer" ? ` · via ${state.brand.name}` : ""}</small><h3>{discovery.name}</h3><p>{discovery.reference ? `Ref. ${discovery.reference}` : "Reference unavailable"}</p><strong>{formatPrice(discovery.priceCents, discovery.currency)}</strong><a href={discovery.sourceUrl} target="_blank" rel="noreferrer">Open product page ↗</a></div>
                     <div className="discovery-card-actions"><button className="text-button is-danger" disabled={workingId === discovery.id} onClick={() => void reviewDiscovery(discovery, "dismiss")}>Dismiss</button><button className="add-button" disabled={workingId === discovery.id} onClick={() => void reviewDiscovery(discovery, "keep")}>{workingId === discovery.id ? "Saving…" : "Keep + wishlist"}</button></div>
                   </article>
                 ))}
               </div>
             ) : (
-              <div className="discovery-empty"><div className="empty-dial" aria-hidden="true"><span /></div><h3>Your tray is empty</h3><p>{state.brand.websiteUrl ? "Fetch a random selection from the brand’s public catalog." : "Save the official website above, then fetch your first selection."}</p><button className="add-button" disabled={!state.brand.websiteUrl || fetching} onClick={() => void fetchWatches()}>{fetching ? "Fetching…" : "Fetch new watches"}</button></div>
+              <div className="discovery-empty"><div className="empty-dial" aria-hidden="true"><span /></div><h3>Your tray is empty</h3><p>{state.brand.websiteUrl ? "Fetch a random selection from this public catalog." : "Save the catalog website above, then fetch your first selection."}</p><button className="add-button" disabled={!state.brand.websiteUrl || fetching} onClick={() => void fetchWatches()}>{fetching ? "Fetching…" : "Fetch new watches"}</button></div>
             )}
           </section>
 

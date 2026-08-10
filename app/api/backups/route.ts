@@ -1,4 +1,4 @@
-import { ensureDatabase, getDb } from "../../../db";
+import { canonicalBrandName, ensureDatabase, getDb } from "../../../db";
 import { brandDiscoveries, brands, priceHistory, watches } from "../../../db/schema";
 import { canonicalListingUrl } from "../../listing-url";
 
@@ -107,10 +107,10 @@ export async function POST(request: Request) {
       const brand = clean(item.brand, 80);
       const model = clean(item.model, 120);
       if (!brand || !model) continue;
-      await db.insert(brands).values({ id: crypto.randomUUID(), name: brand }).onConflictDoNothing();
+      const canonicalBrand = await canonicalBrandName(brand);
       const restoredWatch = {
         id,
-        brand,
+        brand: canonicalBrand,
         model,
         reference: clean(item.reference, 100),
         notes: clean(item.notes, 500),
@@ -177,6 +177,7 @@ export async function POST(request: Request) {
       await db.insert(brandDiscoveries).values({
         id: clean(item.id, 80) || crypto.randomUUID(),
         brandId,
+        productBrand: clean(item.productBrand, 80),
         name,
         reference: clean(item.reference, 100),
         imageUrl: webUrl(item.imageUrl, true),

@@ -77,6 +77,7 @@ export const brandDiscoveries = sqliteTable(
   {
     id: text("id").primaryKey(),
     brandId: text("brand_id").notNull().references(() => brands.id, { onDelete: "cascade" }),
+    productBrand: text("product_brand").notNull().default(""),
     name: text("name").notNull(),
     reference: text("reference").notNull().default(""),
     imageUrl: text("image_url").notNull().default(""),

@@ -79,6 +79,7 @@ export async function ensureDatabase() {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS brand_discoveries (
       id TEXT PRIMARY KEY NOT NULL,
       brand_id TEXT NOT NULL REFERENCES brands(id) ON DELETE CASCADE,
+      product_brand TEXT DEFAULT '' NOT NULL,
       name TEXT NOT NULL,
       reference TEXT DEFAULT '' NOT NULL,
       image_url TEXT DEFAULT '' NOT NULL,
@@ -138,5 +139,53 @@ export async function ensureDatabase() {
   if (!brandNames.has("category")) brandUpgrades.push(env.DB.prepare("ALTER TABLE brands ADD COLUMN category TEXT DEFAULT 'brand' NOT NULL"));
   if (brandUpgrades.length) await env.DB.batch(brandUpgrades);
 
+  const discoveryColumns = await env.DB.prepare("PRAGMA table_info(brand_discoveries)").all<{ name: string }>();
+  if (!discoveryColumns.results.some((column) => column.name === "product_brand")) {
+    await env.DB.prepare("ALTER TABLE brand_discoveries ADD COLUMN product_brand TEXT DEFAULT '' NOT NULL").run();
+  }
+
+  const duplicateGroups = await env.DB.prepare(`
+    SELECT lower(trim(name)) AS name_key
+    FROM brands
+    GROUP BY lower(trim(name))
+    HAVING count(*) > 1
+  `).all<{ name_key: string }>();
+  for (const group of duplicateGroups.results) {
+    const matches = await env.DB.prepare(`
+      SELECT id, name, website_url, notes, created_at
+      FROM brands
+      WHERE lower(trim(name)) = ?
+      ORDER BY created_at, id
+    `).bind(group.name_key).all<{ id: string; name: string; website_url: string; notes: string; created_at: string }>();
+    const ranked = [...matches.results].sort((left, right) => {
+      const leftMixedCase = /[a-z]/.test(left.name) && /[A-Z]/.test(left.name) ? 1 : 0;
+      const rightMixedCase = /[a-z]/.test(right.name) && /[A-Z]/.test(right.name) ? 1 : 0;
+      const leftDetail = Number(Boolean(left.website_url)) + Number(Boolean(left.notes));
+      const rightDetail = Number(Boolean(right.website_url)) + Number(Boolean(right.notes));
+      return rightMixedCase - leftMixedCase || rightDetail - leftDetail || left.created_at.localeCompare(right.created_at);
+    });
+    const canonical = ranked[0];
+    if (!canonical) continue;
+    await env.DB.prepare("UPDATE watches SET brand = ? WHERE lower(trim(brand)) = ?").bind(canonical.name, group.name_key).run();
+    for (const duplicate of ranked.slice(1)) {
+      await env.DB.prepare(`DELETE FROM brand_discoveries
+        WHERE brand_id = ? AND canonical_url IN (
+          SELECT canonical_url FROM brand_discoveries WHERE brand_id = ?
+        )`).bind(duplicate.id, canonical.id).run();
+      await env.DB.prepare("UPDATE brand_discoveries SET brand_id = ? WHERE brand_id = ?").bind(canonical.id, duplicate.id).run();
+      await env.DB.prepare("DELETE FROM brands WHERE id = ?").bind(duplicate.id).run();
+    }
+  }
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_brands_name_nocase ON brands (name COLLATE NOCASE)").run();
+
   await env.DB.prepare("PRAGMA optimize").run();
+}
+
+export async function canonicalBrandName(value: string) {
+  if (!env.DB) throw new Error("The project-local watch database is unavailable.");
+  const name = value.trim().replace(/\s+/g, " ").slice(0, 80);
+  const existing = await env.DB.prepare("SELECT name FROM brands WHERE name = ? COLLATE NOCASE LIMIT 1").bind(name).first<{ name: string }>();
+  if (existing) return existing.name;
+  await env.DB.prepare("INSERT INTO brands (id, name) VALUES (?, ?)").bind(crypto.randomUUID(), name).run();
+  return name;
 }

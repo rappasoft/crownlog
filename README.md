@@ -98,9 +98,13 @@ All unreviewed discoveries also appear under **Collection → Drafts**. This giv
 
 In **Collection → Drafts**, select a draft title or **Edit before adding** to correct its fields and add notes, a target price, grail score, specifications, and tags. Choose **Save details + wishlist** when it is ready.
 
-To refresh every eligible brand at once, choose **Fetch all drafts** beside **Brands I follow**. Crownlog scans official brand websites one at a time, shows live progress, continues past sites that block discovery, and reports skipped retailers or brands without websites. Large directories can take several minutes.
+To refresh every eligible catalog at once, choose **Fetch all drafts** beside **Brands I follow**. Crownlog scans brand and retailer websites one at a time, shows live progress, continues past sites that block discovery, and reports entries without websites. Large directories can take several minutes.
+
+Retailers can be followed too. For a multi-brand store such as Jomashop, use its watch catalog URL and set the entry type to **Retailer**. Crownlog samples the store’s public sitemaps, reads the manufacturer from each product page, and keeps the retailer as the discovery source. Edit a draft before accepting it if the published brand or other details need correction.
 
 Discovery depends on public retailer metadata. Some websites omit sitemaps, use unusual URLs, require JavaScript, or block automated requests. Crownlog reports those cases instead of adding incomplete records; individual sites may require future custom adapters.
+
+Brand names are matched without regard to capitalization. Adding `Timex`, `TIMEX`, or `timex` reuses one brand, and existing case-only duplicates are consolidated automatically the next time Crownlog opens the database.
 
 ### Adding a watch manually
 

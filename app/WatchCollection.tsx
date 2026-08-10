@@ -478,7 +478,7 @@ export default function WatchCollection() {
   }
 
   async function fetchDraftsForAllBrands() {
-    const eligibleBrands = brands.filter((brand) => brand.category === "brand" && Boolean(brand.websiteUrl));
+    const eligibleBrands = brands.filter((brand) => Boolean(brand.websiteUrl));
     const skipped = brands.length - eligibleBrands.length;
     if (!eligibleBrands.length) {
       setBulkDiscoveryMessage("Add official websites to followed brands before running a bulk fetch.");
@@ -512,7 +512,7 @@ export default function WatchCollection() {
 
       await loadData();
       if (found > 0) setFilter("drafts");
-      const skippedNote = skipped ? " " + skipped + " retailer or brand without a website " + (skipped === 1 ? "was" : "were") + " skipped." : "";
+      const skippedNote = skipped ? " " + skipped + " catalog without a website " + (skipped === 1 ? "was" : "were") + " skipped." : "";
       const failureNote = failures.length ? " Couldn’t read: " + failures.slice(0, 4).join(", ") + (failures.length > 4 ? " and " + (failures.length - 4) + " more." : ".") : "";
       setBulkDiscoveryMessage("Found " + found + " new draft " + (found === 1 ? "watch" : "watches") + " across " + brandsWithDrafts + " " + (brandsWithDrafts === 1 ? "brand" : "brands") + "." + skippedNote + failureNote);
     } finally {
@@ -559,6 +559,7 @@ export default function WatchCollection() {
           id: editingDraft.id,
           action: "keep",
           details: {
+            brand: formData.get("brand"),
             model: formData.get("model"),
             reference: formData.get("reference"),
             imageUrl: formData.get("imageUrl"),
@@ -1394,7 +1395,7 @@ export default function WatchCollection() {
             <div className="collection-drafts">
               <div className="discovery-heading">
                 <div><span className="section-number">IN REVIEW</span><h2>Draft watches</h2></div>
-                <p>Fetched from brand catalogs. Nothing joins your wishlist until you keep it.</p>
+                <p>Fetched from brand and retailer catalogs. Nothing joins your wishlist until you keep it.</p>
               </div>
               <div className="discovery-grid collection-draft-grid">
                 {visibleDrafts.map((draft) => (
@@ -1612,9 +1613,10 @@ export default function WatchCollection() {
             </div>
             <form onSubmit={keepEditedDraft}>
               <div className="field-row">
+                <label><span>Brand *</span><input name="brand" required defaultValue={editingDraft.brandName} /></label>
                 <label><span>Model *</span><input name="model" required defaultValue={editingDraft.name} /></label>
-                <label><span>Reference</span><input name="reference" defaultValue={editingDraft.reference} /></label>
               </div>
+              <label><span>Reference</span><input name="reference" defaultValue={editingDraft.reference} /></label>
               <div className="field-row">
                 <label><span>Current price</span><input name="currentPrice" inputMode="decimal" defaultValue={editingDraft.priceCents === null ? "" : editingDraft.priceCents / 100} /></label>
                 <label><span>Target price</span><input name="targetPrice" inputMode="decimal" placeholder="Optional" /></label>

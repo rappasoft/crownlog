@@ -49,14 +49,43 @@ function sameStorefront(candidate: URL, storefront: URL) {
 }
 
 const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
+const SITEMAP_READ_LIMIT = 5_000_000;
 
 async function readSitemap(url: URL, signal?: AbortSignal) {
-  const page = await fetchProductPage(publicProductUrl(url.toString()), { ...DISCOVERY_PAGE_OPTIONS, signal });
-  return { xml: page.html, finalUrl: new URL(page.finalUrl) };
+  let currentUrl = publicProductUrl(url.toString());
+  for (let redirects = 0; redirects <= 3; redirects += 1) {
+    const response = await fetch(currentUrl, {
+      redirect: "manual",
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(7000)]) : AbortSignal.timeout(7000),
+      headers: { accept: "application/xml,text/xml,text/plain", "user-agent": "Crownlog Catalog Discovery/1.0" },
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location || redirects === 3) throw new Error("The catalog sitemap redirected too many times.");
+      currentUrl = publicProductUrl(new URL(location, currentUrl).toString());
+      continue;
+    }
+    if (!response.ok) throw new Error(`The catalog sitemap returned ${response.status}.`);
+    const reader = response.body?.getReader();
+    if (!reader) return { xml: (await response.text()).slice(0, SITEMAP_READ_LIMIT), finalUrl: currentUrl };
+    const decoder = new TextDecoder();
+    let xml = "";
+    let bytes = 0;
+    while (bytes < SITEMAP_READ_LIMIT) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      xml += decoder.decode(value, { stream: bytes < SITEMAP_READ_LIMIT });
+    }
+    await reader.cancel().catch(() => undefined);
+    return { xml: xml.slice(0, SITEMAP_READ_LIMIT), finalUrl: currentUrl };
+  }
+  throw new Error("The catalog sitemap redirected too many times.");
 }
 
-export async function discoverProductUrls(websiteUrl: string, signal?: AbortSignal) {
+export async function discoverProductUrls(websiteUrl: string, signal?: AbortSignal, options: { retailer?: boolean } = {}) {
   const storefront = publicProductUrl(websiteUrl);
+  const isProductUrl = looksLikeProductUrl;
   const roots = [new URL("/sitemap.xml", storefront), new URL("/sitemap_index.xml", storefront)];
   const rootResults = await Promise.allSettled(roots.map((root) => readSitemap(root, signal)));
   const rootDocuments = rootResults
@@ -75,16 +104,18 @@ export async function discoverProductUrls(websiteUrl: string, signal?: AbortSign
         const url = publicProductUrl(new URL(location, document.finalUrl).toString());
         if (!sameStorefront(url, storefront)) continue;
         if (/\.xml(?:\.gz)?$/i.test(url.pathname)) sitemapUrls.push(url.toString());
-        else if (looksLikeProductUrl(url.toString())) directUrls.push(url.toString());
+        else if (isProductUrl(url.toString())) directUrls.push(url.toString());
       } catch {
         // Ignore malformed or non-public sitemap entries.
       }
     }
   }
 
-  const childSitemaps = [...new Set(sitemapUrls)]
-    .sort((a, b) => Number(/product/i.test(b)) - Number(/product/i.test(a)))
-    .slice(0, 12);
+  const sortedSitemaps = [...new Set(sitemapUrls)]
+    .sort((a, b) => Number(/product/i.test(b)) - Number(/product/i.test(a)));
+  const childSitemaps = options.retailer
+    ? sortedSitemaps.map((url) => ({ url, order: Math.random() })).sort((a, b) => a.order - b.order).slice(0, 4).map((item) => item.url)
+    : sortedSitemaps.slice(0, 12);
   for (let offset = 0; offset < childSitemaps.length && !signal?.aborted; offset += 4) {
     const results = await Promise.allSettled(
       childSitemaps.slice(offset, offset + 4).map((sitemapUrl) => readSitemap(new URL(sitemapUrl), signal)),
@@ -95,7 +126,7 @@ export async function discoverProductUrls(websiteUrl: string, signal?: AbortSign
         for (const location of sitemapLocations(document.xml)) {
           try {
             const url = publicProductUrl(new URL(location, document.finalUrl).toString());
-            if (sameStorefront(url, storefront) && looksLikeProductUrl(url.toString())) {
+            if (sameStorefront(url, storefront) && isProductUrl(url.toString())) {
               directUrls.push(url.toString());
             }
           } catch {

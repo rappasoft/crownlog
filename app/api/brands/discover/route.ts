@@ -1,5 +1,5 @@
-import { asc, desc, eq } from "drizzle-orm";
-import { ensureDatabase, getDb } from "../../../../db";
+import { asc, desc, eq, sql } from "drizzle-orm";
+import { canonicalBrandName, ensureDatabase, getDb } from "../../../../db";
 import { brandDiscoveries, brands, priceHistory, watches } from "../../../../db/schema";
 import { canonicalListingUrl } from "../../../listing-url";
 import { extractProductMetadata, fetchProductPage } from "../../product-metadata";
@@ -61,7 +61,8 @@ export async function GET(request: Request) {
       const discoveries = await db.select({
         id: brandDiscoveries.id,
         brandId: brandDiscoveries.brandId,
-        brandName: brands.name,
+        parentBrandName: brands.name,
+        productBrand: brandDiscoveries.productBrand,
         name: brandDiscoveries.name,
         reference: brandDiscoveries.reference,
         imageUrl: brandDiscoveries.imageUrl,
@@ -76,7 +77,10 @@ export async function GET(request: Request) {
         .innerJoin(brands, eq(brandDiscoveries.brandId, brands.id))
         .where(eq(brandDiscoveries.status, "draft"))
         .orderBy(desc(brandDiscoveries.createdAt));
-      return Response.json({ discoveries });
+      return Response.json({ discoveries: discoveries.map(({ parentBrandName, productBrand, ...discovery }) => ({
+        ...discovery,
+        brandName: productBrand || parentBrandName,
+      })) });
     }
     const state = await brandState(brandId);
     if (!state) return Response.json({ error: "Brand not found." }, { status: 404 });
@@ -96,13 +100,13 @@ export async function POST(request: Request) {
     const db = getDb();
     const [brand] = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
-    if (!brand.websiteUrl) return Response.json({ error: "Add the brand’s official website before fetching watches." }, { status: 400 });
+    if (!brand.websiteUrl) return Response.json({ error: "Add a catalog website before fetching watches." }, { status: 400 });
 
     const controller = new AbortController();
     deadline = setTimeout(() => controller.abort(), DISCOVERY_JOB_TIMEOUT_MS);
-    const productUrls = await discoverProductUrls(brand.websiteUrl, controller.signal);
+    const productUrls = await discoverProductUrls(brand.websiteUrl, controller.signal, { retailer: brand.category === "retailer" });
     if (!productUrls.length) {
-      return Response.json({ error: "No product pages were found in this brand’s public sitemap. The site may need a custom adapter." }, { status: 422 });
+      return Response.json({ error: "No product pages were found in this catalog’s public sitemap. The site may need a custom adapter." }, { status: 422 });
     }
 
     const [seenDiscoveries, savedWatches] = await Promise.all([
@@ -131,11 +135,20 @@ export async function POST(request: Request) {
       scanned += batch.length;
       for (const product of products) {
         if (!product?.name || !isLikelyWatchProduct(product) || (!product.imageUrl && product.priceCents === null && !product.reference)) continue;
+        const metadataBrand = clean(product.brand, 80);
+        if (brand.category === "retailer" && (!metadataBrand || metadataBrand.toLowerCase() === brand.name.toLowerCase())) continue;
+        let productBrand = brand.name;
+        if (brand.category === "retailer") {
+          const [knownBrand] = await db.select({ name: brands.name }).from(brands)
+            .where(sql`lower(${brands.name}) = lower(${metadataBrand})`).limit(1);
+          productBrand = knownBrand?.name || metadataBrand;
+        }
         const canonicalUrl = canonicalListingUrl(product.listingUrl);
         if (!canonicalUrl || seenUrls.has(canonicalUrl)) continue;
         await db.insert(brandDiscoveries).values({
           id: crypto.randomUUID(),
           brandId,
+          productBrand,
           name: product.name,
           reference: product.reference,
           imageUrl: product.imageUrl,
@@ -182,6 +195,7 @@ export async function PATCH(request: Request) {
     const details = payload.details && typeof payload.details === "object" && !Array.isArray(payload.details)
       ? payload.details as Record<string, unknown>
       : {};
+    const watchBrand = await canonicalBrandName(clean(details.brand, 80) || discovery.productBrand || brand.name);
     const model = clean(details.model, 120) || discovery.name;
     const reference = "reference" in details ? clean(details.reference, 100) : discovery.reference;
     const imageUrl = "imageUrl" in details ? safeImageUrl(details.imageUrl) : discovery.imageUrl;
@@ -195,7 +209,7 @@ export async function PATCH(request: Request) {
     if (!watch) {
       [watch] = await db.insert(watches).values({
         id: crypto.randomUUID(),
-        brand: brand.name,
+        brand: watchBrand,
         model,
         reference,
         notes: clean(details.notes, 500),
@@ -220,6 +234,7 @@ export async function PATCH(request: Request) {
     }
     const [updated] = await db.update(brandDiscoveries).set({
       name: model,
+      productBrand: watchBrand,
       reference,
       imageUrl,
       priceCents: currentPriceCents,

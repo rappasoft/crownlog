@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchProductPage } from "../app/api/product-metadata";
+import { extractProductMetadata, fetchProductPage } from "../app/api/product-metadata";
+
+test("reads Jomashop preload metadata when standard product metadata is absent", () => {
+  const product = extractProductMetadata(`
+    <meta name="preload_data"
+      data-preload-product-brand-name='Invicta'
+      data-preload-product-name-wout-brand='DNA Men&#39;s Watch 10428'
+      data-preload-product-image='https://cdn.example.test/watch.jpg?width=800&amp;height=800'
+    />
+  `, "https://www.jomashop.com/invicta-watch-10428.html");
+
+  assert.equal(product.brand, "Invicta");
+  assert.equal(product.name, "DNA Men's Watch 10428");
+  assert.equal(product.imageUrl, "https://cdn.example.test/watch.jpg?width=800&height=800");
+});
 
 test("explains when both retailer fetch attempts time out", async () => {
   const originalFetch = globalThis.fetch;

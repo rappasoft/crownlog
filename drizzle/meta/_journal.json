@@ -71,6 +71,13 @@
       "when": 1786369825585,
       "tag": "0009_watery_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786383693577,
+      "tag": "0010_sticky_killer_shrike",
+      "breakpoints": true
     }
   ]
 }
