@@ -182,5 +182,9 @@ test("wishlist favorites are persisted, filterable, and included in backups", as
   assert.match(watchesRoute, /typeof payload\.isFavorite === "boolean"/);
   assert.match(collection, /value: "favorites"/);
   assert.match(collection, /favorite-toggle/);
+  assert.match(collection, /className="filter-control"/);
+  assert.doesNotMatch(collection, /className="filter-tabs"/);
+  assert.match(collection, /fetchDraftsForAllBrands/);
+  assert.match(collection, /Fetch all drafts/);
   assert.match(backups, /isFavorite: item\.status !== "owned" && item\.isFavorite === true/);
 });

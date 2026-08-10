@@ -296,9 +296,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   margin-bottom: 28px;
 }
 
-.directory-heading > div { display: flex; align-items: baseline; gap: 21px; }
+.directory-heading > div:first-child { display: flex; align-items: baseline; gap: 21px; }
 .directory-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 36px; font-weight: 400; letter-spacing: -.03em; }
 .directory-heading p { margin: 6px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; }
+.directory-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; }
+.bulk-discovery-message { margin: -12px 0 24px; }
 
 .outline-button {
   min-height: 40px;
@@ -475,14 +477,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 
 .controls {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto 150px auto;
+  grid-template-columns: minmax(240px, 1fr) 190px 150px auto;
   align-items: center;
-  gap: 30px;
+  gap: 20px;
   padding: 18px 20px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
-.controls.is-drafts { grid-template-columns: minmax(240px, 1fr) auto; }
+.controls.is-drafts { grid-template-columns: minmax(240px, 1fr) 190px; }
 .view-toggle {
   height: 38px;
   display: inline-flex;
@@ -505,7 +507,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .view-toggle button span { margin-right: 4px; font-size: 12px; }
 .view-toggle button:hover { color: var(--ink); }
 .view-toggle button.active { background: var(--ink); color: var(--white); }
-.sort-control select {
+.filter-control { min-width: 0; }
+.filter-control select, .sort-control select {
   width: 100%;
   height: 38px;
   padding: 0 10px;
@@ -563,22 +566,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .search-control input { width: 100%; border: 0; outline: 0; background: transparent; font-size: 13px; }
 .search-control input::placeholder { color: #8b897f; }
 
-.filter-tabs { display: flex; gap: 6px; }
-.filter-tabs button {
-  height: 36px;
-  padding: 0 15px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.filter-tabs button:hover { color: var(--ink); }
-.filter-tabs button.active { border-color: var(--ink); background: var(--ink); color: var(--white); }
 
 .error-banner {
   margin-top: 20px;
@@ -1420,8 +1407,6 @@ footer span:last-child { text-align: right; }
   .controls { grid-template-columns: 1fr; gap: 15px; padding: 16px 0; }
   .controls.is-drafts { grid-template-columns: 1fr; }
   .view-toggle { justify-self: start; }
-  .filter-tabs { overflow-x: auto; padding-bottom: 2px; }
-  .filter-tabs button { flex: 0 0 auto; }
   .watch-card { grid-template-columns: 30px 74px minmax(0, 1fr) 32px; gap: 12px; padding: 18px 0; }
   .watch-card:hover { padding-left: 0; }
   .watch-photo { width: 74px; height: 82px; grid-column: 2; grid-row: 1 / span 2; }
@@ -1475,7 +1460,7 @@ footer span:last-child { text-align: right; }
   .collection-actions .roulette-button { width: 42px; min-width: 42px; padding: 0; justify-content: center; font-size: 0; }
   .collection-actions .roulette-button span { font-size: 18px; }
   .directory-heading { align-items: flex-start; }
-  .directory-heading > div { align-items: baseline; }
+  .directory-heading > div:first-child { align-items: baseline; }
   .directory-heading h2 { font-size: 30px; }
   .directory-heading p { display: none; }
   .ledger-intro p { display: none; }

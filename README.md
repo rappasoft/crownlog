@@ -95,6 +95,8 @@ Each followed brand has a dedicated page. Open a brand card from the main direct
 Draft, kept, and dismissed products are stored separately from the wishlist. Repeated fetches skip previously reviewed URLs and watches already saved in Crownlog. The brand page also shows watches from that brand already in the collection.
 
 All unreviewed discoveries also appear under **Collection → Drafts**. This gives you one inbox across every brand, with the same **Keep + wishlist** and **Dismiss** actions available on individual brand pages.
+To refresh every eligible brand at once, choose **Fetch all drafts** beside **Brands I follow**. Crownlog scans official brand websites one at a time, shows live progress, continues past sites that block discovery, and reports skipped retailers or brands without websites. Large directories can take several minutes.
+
 
 Discovery depends on public retailer metadata. Some websites omit sitemaps, use unusual URLs, require JavaScript, or block automated requests. Crownlog reports those cases instead of adding incomplete records; individual sites may require future custom adapters.
 
@@ -201,7 +203,7 @@ Values are only totaled when the owned watches use one currency. Crownlog does n
 
 Search covers brand, model, reference, notes, tags, movement, and dial color.
 
-Available filters are All watches, Wishlist, Favorites, Purchased, Drafts, At target, and Service due. A Duplicates filter appears when repeated product links are found. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
+Use the **Show** dropdown to choose All watches, Wishlist, Favorites, Purchased, Drafts, At target, or Service due without crowding the collection toolbar. A Duplicates option appears when repeated product links are found. Watches can be sorted by brand, grail score, ascending price, descending price, or newest first.
 
 ### Compare mode
 

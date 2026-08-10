@@ -246,6 +246,8 @@ export default function WatchCollection() {
   const [deletingWatch, setDeletingWatch] = useState(false);
   const [workingDraftId, setWorkingDraftId] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
+  const [fetchingAllDrafts, setFetchingAllDrafts] = useState(false);
+  const [bulkDiscoveryMessage, setBulkDiscoveryMessage] = useState("");
   const watchFormRef = useRef<HTMLFormElement>(null);
   const priceFormRef = useRef<HTMLFormElement>(null);
   const autoMarketRefreshStarted = useRef(false);
@@ -470,6 +472,49 @@ export default function WatchCollection() {
     setMarketMatches([]);
     setPriceCurrency(watch.currency || "USD");
     setPriceWatch(watch);
+  }
+
+  async function fetchDraftsForAllBrands() {
+    const eligibleBrands = brands.filter((brand) => brand.category === "brand" && Boolean(brand.websiteUrl));
+    const skipped = brands.length - eligibleBrands.length;
+    if (!eligibleBrands.length) {
+      setBulkDiscoveryMessage("Add official websites to followed brands before running a bulk fetch.");
+      return;
+    }
+
+    setFetchingAllDrafts(true);
+    setBulkDiscoveryMessage("Preparing to scan " + eligibleBrands.length + " brands…");
+    let found = 0;
+    let brandsWithDrafts = 0;
+    const failures: string[] = [];
+
+    try {
+      for (const [index, brand] of eligibleBrands.entries()) {
+        setBulkDiscoveryMessage("Scanning " + brand.name + " — " + (index + 1) + " of " + eligibleBrands.length + " brands…");
+        try {
+          const response = await fetch("/api/brands/discover", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ brandId: brand.id }),
+          });
+          const data = await response.json() as { fetch?: { found?: number }; error?: string };
+          if (!response.ok) throw new Error(data.error || "Discovery failed.");
+          const brandFound = data.fetch?.found || 0;
+          found += brandFound;
+          if (brandFound > 0) brandsWithDrafts += 1;
+        } catch {
+          failures.push(brand.name);
+        }
+      }
+
+      await loadData();
+      if (found > 0) setFilter("drafts");
+      const skippedNote = skipped ? " " + skipped + " retailer or brand without a website " + (skipped === 1 ? "was" : "were") + " skipped." : "";
+      const failureNote = failures.length ? " Couldn’t read: " + failures.slice(0, 4).join(", ") + (failures.length > 4 ? " and " + (failures.length - 4) + " more." : ".") : "";
+      setBulkDiscoveryMessage("Found " + found + " new draft " + (found === 1 ? "watch" : "watches") + " across " + brandsWithDrafts + " " + (brandsWithDrafts === 1 ? "brand" : "brands") + "." + skippedNote + failureNote);
+    } finally {
+      setFetchingAllDrafts(false);
+    }
   }
 
   async function reviewDraft(draft: DiscoveryDraft, action: "keep" | "dismiss") {
@@ -1153,8 +1198,12 @@ export default function WatchCollection() {
               <p>Save a maison now, choose the model later.</p>
             </div>
           </div>
-          <button className="outline-button" onClick={() => openBrandForm()}><span aria-hidden="true">+</span> Follow brand</button>
+          <div className="directory-actions">
+            <button className="outline-button" disabled={fetchingAllDrafts} onClick={() => void fetchDraftsForAllBrands()}><span aria-hidden="true">↻</span> {fetchingAllDrafts ? "Fetching drafts…" : "Fetch all drafts"}</button>
+            <button className="outline-button" onClick={() => openBrandForm()}><span aria-hidden="true">+</span> Follow brand</button>
+          </div>
         </div>
+        {bulkDiscoveryMessage && <div className="bulk-price-message bulk-discovery-message" role="status"><span>{bulkDiscoveryMessage}</span>{!fetchingAllDrafts && <button onClick={() => setBulkDiscoveryMessage("")} aria-label="Dismiss discovery update">×</button>}</div>}
         {brands.length ? (
           <>
           <div className="brand-directory-grid">
@@ -1231,18 +1280,16 @@ export default function WatchCollection() {
               placeholder={filter === "drafts" ? "Search draft brand, model, or reference" : "Search brand, model, or reference"}
             />
           </label>
-          <div className="filter-tabs" aria-label="Filter watches">
-            {FILTERS.filter((item) => item.value !== "duplicates" || duplicateCount > 0).map((item) => (
-              <button
-                key={item.value}
-                className={filter === item.value ? "active" : ""}
-                onClick={() => setFilter(item.value)}
-                aria-pressed={filter === item.value}
-              >
-                {item.value === "drafts" ? `${item.label} ${discoveries.length}` : item.value === "favorites" ? `${item.label} ${favoriteCount}` : item.label}
-              </button>
-            ))}
-          </div>
+          <label className="filter-control">
+            <span className="sr-only">Filter collection</span>
+            <select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} aria-label="Show collection">
+              {FILTERS.filter((item) => item.value !== "duplicates" || duplicateCount > 0).map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.value === "drafts" ? `Show: ${item.label} (${discoveries.length})` : item.value === "favorites" ? `Show: ${item.label} (${favoriteCount})` : `Show: ${item.label}`}
+                </option>
+              ))}
+            </select>
+          </label>
           {filter !== "drafts" && (
             <>
               <label className="sort-control">
