@@ -270,6 +270,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ledger-intro { display: flex; align-items: baseline; gap: 21px; margin-bottom: 24px; }
 .ledger-intro h2 { margin: 0; font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; }
 .ledger-intro p { margin: 5px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; }
+.ledger-currency { margin-left: auto; display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ledger-currency select { height: 32px; padding: 0 25px 0 9px; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font-size: 9px; font-weight: 700; }
 .ledger-grid { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
 .ledger-grid article { min-height: 132px; padding: 22px 20px; border-right: 1px solid var(--line); }
 .ledger-grid article:first-child { padding-left: 0; }
@@ -277,6 +279,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ledger-grid small { display: block; color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .ledger-grid strong { display: block; margin: 16px 0 7px; font-family: Georgia, serif; font-size: 24px; font-weight: 400; }
 .ledger-grid span { display: block; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.ledger-grid span em { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; font-style: normal; }
 .ledger-grid span a { display: block; margin-top: 3px; color: var(--accent); font-size: 7px; font-weight: 700; text-decoration: none; text-transform: uppercase; }
 .ledger-grid span a:hover { text-decoration: underline; }
 .ledger-grid .needs-attention strong { color: var(--accent); }
@@ -1484,6 +1487,8 @@ footer span:last-child { text-align: right; }
   .directory-heading h2 { font-size: 30px; }
   .directory-heading p { display: none; }
   .ledger-intro p { display: none; }
+  .ledger-intro { align-items: flex-start; flex-wrap: wrap; }
+  .ledger-currency { width: 100%; margin-left: 39px; }
   .ledger-grid { grid-template-columns: 1fr; }
   .ledger-grid article, .ledger-grid article:nth-child(2), .ledger-grid article:nth-child(3) { min-height: 105px; padding: 18px 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .ledger-grid article:last-child { border-bottom: 0; }

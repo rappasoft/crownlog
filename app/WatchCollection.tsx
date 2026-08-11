@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { convertCents, type ExchangeRateSnapshot } from "./exchange-rates";
 import { canonicalListingUrl, duplicateListingGroups } from "./listing-url";
 
 type WatchStatus = "wishlist" | "owned";
@@ -138,6 +139,9 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Duplicates", value: "duplicates" },
 ];
 const VIEW_PREFERENCE_KEY = "crownlog-view-mode";
+const LEDGER_CURRENCY_KEY = "crownlog-ledger-currency";
+const EXCHANGE_RATES_CACHE_KEY = "crownlog-exchange-rates";
+const SUPPORTED_CURRENCIES = ["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY"];
 
 function countLabel(count: number) {
   return `${count} ${count === 1 ? "watch" : "watches"}`;
@@ -238,6 +242,8 @@ export default function WatchCollection() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("brand");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [ledgerCurrency, setLedgerCurrency] = useState("USD");
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRateSnapshot | null>(null);
   const [checkingAllPrices, setCheckingAllPrices] = useState(false);
   const [bulkPriceMessage, setBulkPriceMessage] = useState("");
   const [restoringBackup, setRestoringBackup] = useState(false);
@@ -292,6 +298,29 @@ export default function WatchCollection() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setViewMode(savedView);
     }
+  }, []);
+
+  useEffect(() => {
+    const savedCurrency = window.localStorage.getItem(LEDGER_CURRENCY_KEY);
+    if (savedCurrency && SUPPORTED_CURRENCIES.includes(savedCurrency)) {
+      // Restore the preferred ledger currency after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLedgerCurrency(savedCurrency);
+    }
+    try {
+      const savedRates = JSON.parse(window.localStorage.getItem(EXCHANGE_RATES_CACHE_KEY) || "null") as ExchangeRateSnapshot | null;
+      if (savedRates?.base === "EUR" && savedRates.date && savedRates.rates?.EUR === 1) setExchangeRates(savedRates);
+    } catch {
+      window.localStorage.removeItem(EXCHANGE_RATES_CACHE_KEY);
+    }
+    void fetch("/api/exchange-rates", { cache: "no-store" })
+      .then(async (response) => response.ok ? await response.json() as ExchangeRateSnapshot : null)
+      .then((snapshot) => {
+        if (!snapshot?.rates) return;
+        setExchangeRates(snapshot);
+        window.localStorage.setItem(EXCHANGE_RATES_CACHE_KEY, JSON.stringify(snapshot));
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -361,24 +390,44 @@ export default function WatchCollection() {
     const purchased = owned.filter((watch) => watch.purchasePriceCents !== null);
     const valued = owned.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
     const valuedWishlist = wishlist.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
-    const purchaseCurrencies = new Set(purchased.map((watch) => watch.currency));
-    const valueCurrencies = new Set(valued.map((watch) => watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency));
-    const wishlistCurrencies = new Set(valuedWishlist.map((watch) => watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency));
-    const purchaseTotal = owned.reduce((sum, watch) => sum + (watch.purchasePriceCents || 0), 0);
-    const currentTotal = owned.reduce((sum, watch) => sum + (watch.marketPriceCents ?? watch.currentPriceCents ?? 0), 0);
-    const wishlistTotal = wishlist.reduce((sum, watch) => sum + (watch.marketPriceCents ?? watch.currentPriceCents ?? 0), 0);
     const recordedPurchases = owned.filter((watch) => watch.purchasePriceCents !== null).length;
+    const summarize = (entries: Array<{ cents: number; currency: string }>) => {
+      const subtotals = entries.reduce<Record<string, number>>((totals, entry) => {
+        totals[entry.currency] = (totals[entry.currency] || 0) + entry.cents;
+        return totals;
+      }, {});
+      const breakdown = Object.entries(subtotals).map(([currency, cents]) => formatPrice(cents, currency)).join(" + ");
+      if (exchangeRates && entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[ledgerCurrency])) {
+        const converted = entries.reduce((sum, entry) => sum + (convertCents(entry.cents, entry.currency, ledgerCurrency, exchangeRates.rates) || 0), 0);
+        const approximate = entries.some((entry) => entry.currency !== ledgerCurrency);
+        return { value: `${approximate ? "≈ " : ""}${formatPrice(converted, ledgerCurrency)}`, breakdown: approximate ? breakdown : "" };
+      }
+      if (Object.keys(subtotals).length === 1) return { value: breakdown, breakdown: "" };
+      return { value: breakdown || "Rates unavailable", breakdown: "Conversion unavailable" };
+    };
+    const purchaseSummary = summarize(purchased.map((watch) => ({ cents: watch.purchasePriceCents!, currency: watch.currency })));
+    const currentSummary = summarize(valued.map((watch) => ({
+      cents: watch.marketPriceCents ?? watch.currentPriceCents!,
+      currency: watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency,
+    })));
+    const wishlistSummary = summarize(valuedWishlist.map((watch) => ({
+      cents: watch.marketPriceCents ?? watch.currentPriceCents!,
+      currency: watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency,
+    })));
     return {
-      purchaseValue: purchaseCurrencies.size <= 1 && recordedPurchases ? formatPrice(purchaseTotal, purchased[0]?.currency || "USD") : recordedPurchases ? "Mixed currencies" : "Not recorded",
-      currentValue: valueCurrencies.size <= 1 && valued.length ? formatPrice(currentTotal, valued[0]?.marketPriceCents !== null ? valued[0]?.marketCurrency : valued[0]?.currency) : valued.length ? "Mixed currencies" : owned.length ? "Not recorded" : "No watches yet",
-      futureSpend: wishlistCurrencies.size <= 1 && valuedWishlist.length ? formatPrice(wishlistTotal, valuedWishlist[0]?.marketPriceCents !== null ? valuedWishlist[0]?.marketCurrency : valuedWishlist[0]?.currency) : valuedWishlist.length ? "Mixed currencies" : wishlist.length ? "Not estimated" : "No watches yet",
+      purchaseValue: recordedPurchases ? purchaseSummary.value : "Not recorded",
+      currentValue: valued.length ? currentSummary.value : owned.length ? "Not recorded" : "No watches yet",
+      futureSpend: valuedWishlist.length ? wishlistSummary.value : wishlist.length ? "Not estimated" : "No watches yet",
+      purchaseBreakdown: purchaseSummary.breakdown,
+      currentBreakdown: currentSummary.breakdown,
+      futureSpendBreakdown: wishlistSummary.breakdown,
       providerValues: valued.filter((watch) => watch.marketProvider === "the-watch-info").length,
       recordedPurchases,
       owned: owned.length,
       wishlist: wishlist.length,
       valuedWishlist: valuedWishlist.length,
     };
-  }, [watches]);
+  }, [exchangeRates, ledgerCurrency, watches]);
 
   const duplicateGroups = useMemo(() => duplicateListingGroups(watches), [watches]);
   const duplicateWatchIds = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((watch) => watch.id))), [duplicateGroups]);
@@ -1228,11 +1277,15 @@ export default function WatchCollection() {
         <div className="ledger-intro">
           <span className="section-number">LEDGER</span>
           <div><h2 id="ledger-heading">Collection at a glance</h2><p>The useful numbers behind the watch box.</p></div>
+          <label className="ledger-currency"><span>Display currency</span><select value={ledgerCurrency} onChange={(event) => {
+            setLedgerCurrency(event.target.value);
+            window.localStorage.setItem(LEDGER_CURRENCY_KEY, event.target.value);
+          }}>{SUPPORTED_CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select></label>
         </div>
         <div className="ledger-grid">
-          <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded</span></article>
-          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
-          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated value for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces</span></article>
+          <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded{collectorLedger.purchaseBreakdown && <em>{collectorLedger.purchaseBreakdown}</em>}</span></article>
+          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.currentBreakdown && <em>{collectorLedger.currentBreakdown}</em>}{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
+          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated value for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces{collectorLedger.futureSpendBreakdown && <em>{collectorLedger.futureSpendBreakdown}</em>}{exchangeRates && <em>ECB rates · {new Date(`${exchangeRates.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</em>}</span></article>
           <article className={stats.serviceDue ? "needs-attention" : ""}><small>Service desk</small><strong>{stats.serviceDue ? `${stats.serviceDue} due` : "All clear"}</strong><span>Upcoming service dates stay in Details</span></article>
           <article><small>Wrist time</small><strong>{stats.wears} wears</strong><span>Log a wear from an owned watch’s Details</span></article>
         </div>

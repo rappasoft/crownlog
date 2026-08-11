@@ -205,7 +205,7 @@ If no provider match exists, enter a **Manual market estimate** in Details. Mark
 - Watches with an overdue service date
 - Total logged wrist time
 
-Values are only totaled when the owned watches use one currency. Crownlog does not guess currency conversions.
+Choose a ledger display currency to combine watches priced in different currencies. Crownlog uses the European Central Bank’s free daily reference rates, marks converted totals with `≈`, shows the original-currency subtotals, and caches the latest successful rate snapshot in the browser for temporary offline use. If a currency is unsupported or no rate has ever been downloaded, Crownlog shows the separate subtotals instead of inventing a conversion.
 
 ### Search, filters, and sorting
 
