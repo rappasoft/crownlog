@@ -191,8 +191,11 @@ test("wishlist favorites are persisted, filterable, and included in backups", as
   assert.match(schema, /isFavorite: integer\("is_favorite", \{ mode: "boolean" \}\)/);
   assert.match(database, /ALTER TABLE watches ADD COLUMN is_favorite INTEGER DEFAULT 0 NOT NULL/);
   assert.match(watchesRoute, /typeof payload\.isFavorite === "boolean"/);
+  assert.match(watchesRoute, /const isFavorite = status === "wishlist" && payload\.isFavorite === true/);
   assert.match(collection, /value: "favorites"/);
   assert.match(collection, /favorite-toggle/);
+  assert.match(collection, /name="isFavorite"/);
+  assert.match(collection, /Favorite this watch/);
   assert.match(collection, /className="filter-control"/);
   assert.doesNotMatch(collection, /className="filter-tabs"/);
   assert.match(collection, /fetchDraftsForAllBrands/);
@@ -201,4 +204,13 @@ test("wishlist favorites are persisted, filterable, and included in backups", as
   assert.match(collection, /Edit before adding/);
   assert.match(discoverRoute, /payload\.details/);
   assert.match(backups, /isFavorite: item\.status !== "owned" && item\.isFavorite === true/);
+});
+
+test("saved watch images open in a large lightbox", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+
+  assert.match(collection, /className="watch-photo-button"/);
+  assert.match(collection, /setPreviewImage/);
+  assert.match(collection, /className="image-lightbox"/);
+  assert.match(collection, /Open original image/);
 });

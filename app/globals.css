@@ -639,7 +639,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
   font-size: 24px;
   font-style: italic;
 }
-.watch-photo span, .watch-photo img { grid-area: 1 / 1; }
+.watch-photo span, .watch-photo-button { grid-area: 1 / 1; }
+.watch-photo-button { width: 100%; height: 100%; position: relative; z-index: 1; padding: 0; overflow: hidden; border: 0; background: transparent; cursor: zoom-in; }
+.watch-photo-button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
 .watch-photo img { width: 100%; height: 100%; position: relative; z-index: 1; object-fit: contain; background: #fff; }
 .watch-table-header, .watch-table-brand, .watch-table-reference, .watch-table-market, .watch-table-checked { display: none; }
 .watch-main { min-width: 0; }
@@ -1007,6 +1009,25 @@ footer span:last-child { text-align: right; }
 .modal-header h2 { margin: 12px 0 0; font-family: Georgia, serif; font-size: 38px; font-weight: 400; letter-spacing: -.04em; }
 .modal-header > button { width: 38px; height: 38px; border: 1px solid var(--line); background: transparent; font-size: 22px; cursor: pointer; }
 .modal-header > button:hover { border-color: var(--accent); color: var(--accent); }
+.image-lightbox-backdrop { padding: 24px; }
+.image-lightbox {
+  width: min(920px, 100%);
+  max-height: calc(100vh - 48px);
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.32);
+  background: var(--paper);
+  box-shadow: 0 28px 90px rgba(0,0,0,.42);
+}
+.image-lightbox > img { width: 100%; height: min(76vh, 760px); min-height: 320px; object-fit: contain; background: #fff; }
+.image-lightbox > div { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 15px 20px; border-top: 1px solid var(--line); }
+.image-lightbox > div strong { overflow: hidden; font-family: Georgia, serif; font-size: 16px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.image-lightbox > div a { flex: 0 0 auto; color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .09em; text-decoration: none; text-transform: uppercase; }
+.image-lightbox > div a:hover { text-decoration: underline; }
+.image-lightbox-close { width: 42px; height: 42px; position: absolute; top: 12px; right: 12px; z-index: 2; border: 1px solid var(--line); background: rgba(247,245,239,.94); color: var(--ink); font-size: 23px; cursor: pointer; }
+.image-lightbox-close:hover { border-color: var(--accent); color: var(--accent); }
 
 .watch-modal form { padding: 30px 38px 38px; }
 .delete-modal { width: min(520px, 100%); padding: 38px; text-align: center; }
@@ -1160,6 +1181,25 @@ footer span:last-child { text-align: right; }
 .currency-input > span { margin: 0 0 0 13px !important; color: var(--ink) !important; font-family: Georgia, serif; font-size: 15px !important; }
 .currency-input input { border: 0 !important; background: transparent !important; }
 .watch-modal input:not([type="radio"]):focus, .watch-modal textarea:focus, .watch-modal select:focus { border-color: var(--accent); background: var(--white); }
+.favorite-field {
+  min-height: 62px;
+  display: grid !important;
+  grid-template-columns: 20px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 24px !important;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.3);
+  cursor: pointer;
+}
+.favorite-field input { width: 18px !important; height: 18px; margin: 0; padding: 0 !important; accent-color: var(--accent); cursor: pointer; }
+.favorite-field-heart { margin: 0 !important; color: #aaa69b !important; font-family: Georgia, serif; font-size: 25px !important; line-height: 1; text-align: center; }
+.favorite-field-copy { margin: 0 !important; }
+.favorite-field-copy strong { display: block; color: var(--ink); font-family: Georgia, serif; font-size: 15px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.favorite-field-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 8px; font-weight: 400; letter-spacing: 0; line-height: 1.4; text-transform: none; }
+.favorite-field:has(input:checked) { border-color: var(--accent); background: #f6ece8; }
+.favorite-field:has(input:checked) .favorite-field-heart { color: var(--accent) !important; }
 .watch-modal fieldset { margin: 5px 0 28px; padding: 0; border: 0; }
 .status-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .status-options label { cursor: pointer; }

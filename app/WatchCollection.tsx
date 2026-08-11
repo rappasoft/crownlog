@@ -97,6 +97,7 @@ type AddWatchPayload = {
   reference: string;
   notes: string;
   status: string;
+  isFavorite: boolean;
   grailScore: string;
   currentPrice: string;
   targetPrice: string;
@@ -235,6 +236,7 @@ export default function WatchCollection() {
   const [checkingMarket, setCheckingMarket] = useState(false);
   const [marketMessage, setMarketMessage] = useState("");
   const [rouletteWatch, setRouletteWatch] = useState<Watch | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
   const [showGuide, setShowGuide] = useState(false);
   const [showVault, setShowVault] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
@@ -342,7 +344,7 @@ export default function WatchCollection() {
   }, [loading, watches]);
 
   useEffect(() => {
-    if (!showForm && !showBrandForm && !priceWatch && !rouletteWatch && !showGuide && !showVault && !showCompare && !deleteWatch && !duplicateWarning) return;
+    if (!showForm && !showBrandForm && !priceWatch && !rouletteWatch && !previewImage && !showGuide && !showVault && !showCompare && !deleteWatch && !duplicateWarning) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         if (!deletingWatch) {
@@ -351,6 +353,7 @@ export default function WatchCollection() {
           setEditingBrand(null);
           setPriceWatch(null);
           setRouletteWatch(null);
+          setPreviewImage(null);
           setShowGuide(false);
           setShowVault(false);
           setShowCompare(false);
@@ -361,7 +364,7 @@ export default function WatchCollection() {
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [deleteWatch, deletingWatch, duplicateWarning, priceWatch, rouletteWatch, showBrandForm, showCompare, showForm, showGuide, showVault]);
+  }, [deleteWatch, deletingWatch, duplicateWarning, previewImage, priceWatch, rouletteWatch, showBrandForm, showCompare, showForm, showGuide, showVault]);
 
   const stats = useMemo(
     () => ({
@@ -598,6 +601,7 @@ export default function WatchCollection() {
           action: "keep",
           details: {
             brand: formData.get("brand"),
+            isFavorite: formData.get("isFavorite") === "on",
             model: formData.get("model"),
             reference: formData.get("reference"),
             imageUrl: formData.get("imageUrl"),
@@ -876,6 +880,7 @@ export default function WatchCollection() {
       reference: String(formData.get("reference") || ""),
       notes: String(formData.get("notes") || ""),
       status: String(formData.get("status") || "wishlist"),
+      isFavorite: formData.get("isFavorite") === "on",
       grailScore: String(formData.get("grailScore") || "3"),
       currentPrice: String(formData.get("currentPrice") || ""),
       targetPrice: String(formData.get("targetPrice") || ""),
@@ -1053,6 +1058,7 @@ export default function WatchCollection() {
           model: String(formData.get("model") || ""),
           reference: String(formData.get("reference") || ""),
           notes: String(formData.get("notes") || ""),
+          isFavorite: formData.get("isFavorite") === "on",
           currentPrice: String(formData.get("currentPrice") || ""),
           targetPrice: String(formData.get("targetPrice") || ""),
           purchasePrice: String(formData.get("purchasePrice") || ""),
@@ -1489,8 +1495,10 @@ export default function WatchCollection() {
                       <div className="watch-photo">
                         <span aria-hidden="true">{watch.brand.charAt(0)}</span>
                         {watch.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={watch.imageUrl} alt={`${watch.brand} ${watch.model}`} loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                          <button className="watch-photo-button" onClick={() => setPreviewImage({ url: watch.imageUrl, alt: `${watch.brand} ${watch.model}` })} aria-label={`Enlarge image of ${watch.brand} ${watch.model}`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={watch.imageUrl} alt={`${watch.brand} ${watch.model}`} loading="lazy" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                          </button>
                         )}
                       </div>
                       <div className="watch-table-brand">{watch.brand}</div>
@@ -1668,6 +1676,11 @@ export default function WatchCollection() {
                 <label><span>Currency</span><select name="currency" defaultValue={editingDraft.currency}>{["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY"].map((currency) => <option key={currency}>{currency}</option>)}</select></label>
                 <label><span>Grail score</span><select name="grailScore" defaultValue="3">{[1, 2, 3, 4, 5].map((score) => <option key={score} value={score}>{score} / 5</option>)}</select></label>
               </div>
+              <label className="favorite-field">
+                <input type="checkbox" name="isFavorite" />
+                <span className="favorite-field-heart" aria-hidden="true">♥</span>
+                <span className="favorite-field-copy"><strong>Favorite this watch</strong><small>Add it to Favorites when this draft joins the wishlist.</small></span>
+              </label>
               <label><span>Image URL</span><input name="imageUrl" type="url" defaultValue={editingDraft.imageUrl} placeholder="https://…" /></label>
               <label><span>Notes</span><textarea name="notes" rows={3} placeholder="Why it caught your eye, dial variant, preferred configuration…" /></label>
               <div className="detail-section-heading"><span>SPECIFICATIONS</span></div>
@@ -1904,6 +1917,11 @@ export default function WatchCollection() {
                   <label><input type="radio" name="status" value="owned" /><span>Purchased</span></label>
                 </div>
               </fieldset>
+              <label className="favorite-field">
+                <input type="checkbox" name="isFavorite" />
+                <span className="favorite-field-heart" aria-hidden="true">♥</span>
+                <span className="favorite-field-copy"><strong>Favorite this watch</strong><small>Add it to the Favorites filter as soon as it is saved.</small></span>
+              </label>
               <div className="modal-actions">
                 <button type="button" className="cancel-button" onClick={() => setShowForm(false)}>Cancel</button>
                 <button type="submit" className="add-button"><span aria-hidden="true">+</span> Save watch</button>
@@ -1977,6 +1995,13 @@ export default function WatchCollection() {
               </div>
               <label><span>Reference</span><input name="reference" defaultValue={priceWatch.reference} /></label>
               <label><span>Notes</span><textarea name="notes" rows={3} defaultValue={priceWatch.notes} placeholder="Why this watch belongs in the collection…" /></label>
+              {priceWatch.status === "wishlist" && (
+                <label className="favorite-field">
+                  <input type="checkbox" name="isFavorite" defaultChecked={priceWatch.isFavorite} />
+                  <span className="favorite-field-heart" aria-hidden="true">♥</span>
+                  <span className="favorite-field-copy"><strong>Favorite this watch</strong><small>Show it in the Favorites filter.</small></span>
+                </label>
+              )}
               <div className="detail-section-heading"><span>PRICE & LISTING</span></div>
               <div className="field-row">
                 <label>
@@ -2106,6 +2131,19 @@ export default function WatchCollection() {
                 <button type="submit" className="add-button">Save details</button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+
+      {previewImage && (
+        <div className="modal-backdrop image-lightbox-backdrop" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setPreviewImage(null);
+        }}>
+          <section className="image-lightbox" role="dialog" aria-modal="true" aria-label={`Large image of ${previewImage.alt}`}>
+            <button className="image-lightbox-close" onClick={() => setPreviewImage(null)} aria-label="Close large image">×</button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImage.url} alt={previewImage.alt} referrerPolicy="no-referrer" />
+            <div><strong>{previewImage.alt}</strong><a href={previewImage.url} target="_blank" rel="noreferrer">Open original image ↗</a></div>
           </section>
         </div>
       )}

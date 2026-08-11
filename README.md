@@ -144,7 +144,9 @@ Each watch card provides quick actions:
 
 - Select the watch title to open its full Details panel.
 - Select the grail dots to cycle from 1 to 5.
-- Select the heart on a wishlist watch to favorite it. Favorites are saved in SQLite and appear under the **Favorites** filter.
+- Select **Favorite this watch** while adding a watch, accepting an edited draft, or editing a wishlist watch in Details. You can also select the heart directly on an existing wishlist card. Favorites are saved in SQLite and appear under the **Favorites** filter; purchased watches cannot remain favorited.
+
+Select any saved watch image to open a large lightbox preview. From there, choose **Open original image ↗** to open the source image in a new browser tab.
 - Choose **Wishlist/Purchased** to change collection status.
 - Choose **Details** to edit the full record.
 - Choose **+ Compare** to add it to the comparison tray.

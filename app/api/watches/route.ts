@@ -86,6 +86,7 @@ export async function POST(request: Request) {
     const reference = clean(payload.reference, 100);
     const notes = clean(payload.notes, 500);
     const status = isStatus(payload.status) ? payload.status : "wishlist";
+    const isFavorite = status === "wishlist" && payload.isFavorite === true;
     const score = grailScore(payload.grailScore);
     const currentPriceCents = priceInCents(payload.currentPrice);
     const targetPriceCents = priceInCents(payload.targetPrice);
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
     const canonicalBrand = await canonicalBrandName(brand);
     const [watch] = await db
       .insert(watches)
-      .values({ id: crypto.randomUUID(), brand: canonicalBrand, model, reference, notes, status, grailScore: score, currentPriceCents, targetPriceCents, currency, listingUrl, imageUrl, movement, caseSize, caseMaterial, dialColor, waterResistance, tags, purchasePriceCents, purchaseDate, lastServiceDate, nextServiceDate })
+      .values({ id: crypto.randomUUID(), brand: canonicalBrand, model, reference, notes, status, isFavorite, grailScore: score, currentPriceCents, targetPriceCents, currency, listingUrl, imageUrl, movement, caseSize, caseMaterial, dialColor, waterResistance, tags, purchasePriceCents, purchaseDate, lastServiceDate, nextServiceDate })
       .returning();
     const history: Array<typeof priceHistory.$inferSelect> = [];
     if (currentPriceCents !== null) {

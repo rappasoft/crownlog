@@ -214,6 +214,7 @@ export async function PATCH(request: Request) {
         reference,
         notes: clean(details.notes, 500),
         status: "wishlist",
+        isFavorite: details.isFavorite === true,
         grailScore: grailScore(details.grailScore),
         currentPriceCents,
         targetPriceCents: priceInCents(details.targetPrice),
