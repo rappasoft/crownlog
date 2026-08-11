@@ -205,7 +205,7 @@ If no provider match exists, enter a **Manual market estimate** in Details. Mark
 - Watches with an overdue service date
 - Total logged wrist time
 
-Crownlog automatically combines watches priced in different currencies into an estimated U.S.-dollar total. It uses the European Central Bank’s free daily reference rates, marks converted totals with `≈`, and caches the latest successful rate snapshot in the browser for temporary offline use. The ledger only displays USD totals; if a currency is unsupported or no rate has ever been downloaded, it reports that the USD estimate is unavailable instead of listing incompatible currencies.
+Crownlog automatically combines watches priced in different currencies into an estimated U.S.-dollar total. It bundles an ECB reference-rate snapshot for USD, EUR, GBP, AUD, CAD, CHF, and JPY, then refreshes it from the European Central Bank’s free daily feed when available. Converted totals are marked with `≈`, the rate date stays visible, and the latest successful snapshot is cached in the browser. The built-in rates mean the seven supported currencies continue to produce a USD estimate without internet access; unknown currencies report that the estimate is unavailable.
 
 ### Search, filters, and sorting
 

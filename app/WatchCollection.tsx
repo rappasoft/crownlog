@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { convertCents, type ExchangeRateSnapshot } from "./exchange-rates";
+import { BUILT_IN_EXCHANGE_RATES, convertCents, type ExchangeRateSnapshot } from "./exchange-rates";
 import { canonicalListingUrl, duplicateListingGroups } from "./listing-url";
 
 type WatchStatus = "wishlist" | "owned";
@@ -241,7 +241,7 @@ export default function WatchCollection() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("brand");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [exchangeRates, setExchangeRates] = useState<ExchangeRateSnapshot | null>(null);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRateSnapshot>(BUILT_IN_EXCHANGE_RATES);
   const [checkingAllPrices, setCheckingAllPrices] = useState(false);
   const [bulkPriceMessage, setBulkPriceMessage] = useState("");
   const [restoringBackup, setRestoringBackup] = useState(false);
@@ -301,7 +301,7 @@ export default function WatchCollection() {
   useEffect(() => {
     try {
       const savedRates = JSON.parse(window.localStorage.getItem(EXCHANGE_RATES_CACHE_KEY) || "null") as ExchangeRateSnapshot | null;
-      if (savedRates?.base === "EUR" && savedRates.date && savedRates.rates?.EUR === 1) {
+      if (savedRates?.base === "EUR" && savedRates.date >= BUILT_IN_EXCHANGE_RATES.date && savedRates.rates?.EUR === 1) {
         // Restore the last successful rate snapshot after hydration.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setExchangeRates(savedRates);
@@ -391,7 +391,7 @@ export default function WatchCollection() {
       if (entries.every((entry) => entry.currency === LEDGER_CURRENCY)) {
         return formatPrice(entries.reduce((sum, entry) => sum + entry.cents, 0), LEDGER_CURRENCY);
       }
-      if (exchangeRates && entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[LEDGER_CURRENCY])) {
+      if (entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[LEDGER_CURRENCY])) {
         const converted = entries.reduce((sum, entry) => sum + (convertCents(entry.cents, entry.currency, LEDGER_CURRENCY, exchangeRates.rates) || 0), 0);
         return `≈ ${formatPrice(converted, LEDGER_CURRENCY)}`;
       }
@@ -1270,7 +1270,7 @@ export default function WatchCollection() {
         <div className="ledger-grid">
           <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded</span></article>
           <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
-          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated in USD for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces{exchangeRates && <em>ECB rates · {new Date(`${exchangeRates.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</em>}</span></article>
+          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated in USD for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces<em>ECB rate snapshot · {new Date(`${exchangeRates.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</em></span></article>
           <article className={stats.serviceDue ? "needs-attention" : ""}><small>Service desk</small><strong>{stats.serviceDue ? `${stats.serviceDue} due` : "All clear"}</strong><span>Upcoming service dates stay in Details</span></article>
           <article><small>Wrist time</small><strong>{stats.wears} wears</strong><span>Log a wear from an owned watch’s Details</span></article>
         </div>

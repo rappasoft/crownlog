@@ -1,4 +1,4 @@
-import { parseEcbRates, type ExchangeRateSnapshot } from "../../exchange-rates";
+import { BUILT_IN_EXCHANGE_RATES, parseEcbRates, type ExchangeRateSnapshot } from "../../exchange-rates";
 
 const ECB_DAILY_RATES_URL = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
 const CACHE_MS = 12 * 60 * 60 * 1000;
@@ -19,6 +19,12 @@ export async function GET() {
     return Response.json(snapshot, { headers: { "cache-control": "private, max-age=3600" } });
   } catch (error) {
     if (cached) return Response.json(cached.snapshot, { headers: { "x-crownlog-rates": "stale" } });
-    return Response.json({ error: error instanceof Error ? error.message : "Exchange rates are unavailable." }, { status: 502 });
+    return Response.json(BUILT_IN_EXCHANGE_RATES, {
+      headers: {
+        "cache-control": "private, max-age=3600",
+        "x-crownlog-rates": "built-in-fallback",
+        "x-crownlog-rate-error": error instanceof Error ? error.message.slice(0, 120) : "Exchange rates are unavailable.",
+      },
+    });
   }
 }

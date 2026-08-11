@@ -4,6 +4,22 @@ export type ExchangeRateSnapshot = {
   rates: Record<string, number>;
 };
 
+// ECB reference-rate snapshot bundled as a reliable offline fallback.
+// Rates express how much of each currency equals one euro.
+export const BUILT_IN_EXCHANGE_RATES: ExchangeRateSnapshot = {
+  base: "EUR",
+  date: "2026-08-11",
+  rates: {
+    EUR: 1,
+    USD: 1.154,
+    GBP: 0.85483,
+    AUD: 1.6336,
+    CAD: 1.6084,
+    CHF: 0.9351,
+    JPY: 183.72,
+  },
+};
+
 export function parseEcbRates(xml: string): ExchangeRateSnapshot {
   const date = xml.match(/<Cube\s+time=["']([^"']+)["']/i)?.[1] || "";
   const rates: Record<string, number> = { EUR: 1 };
