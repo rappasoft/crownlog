@@ -388,18 +388,14 @@ export default function WatchCollection() {
     const valuedWishlist = wishlist.filter((watch) => watch.marketPriceCents !== null || watch.currentPriceCents !== null);
     const recordedPurchases = owned.filter((watch) => watch.purchasePriceCents !== null).length;
     const summarize = (entries: Array<{ cents: number; currency: string }>) => {
-      const subtotals = entries.reduce<Record<string, number>>((totals, entry) => {
-        totals[entry.currency] = (totals[entry.currency] || 0) + entry.cents;
-        return totals;
-      }, {});
-      const breakdown = Object.entries(subtotals).map(([currency, cents]) => formatPrice(cents, currency)).join(" + ");
+      if (entries.every((entry) => entry.currency === LEDGER_CURRENCY)) {
+        return formatPrice(entries.reduce((sum, entry) => sum + entry.cents, 0), LEDGER_CURRENCY);
+      }
       if (exchangeRates && entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[LEDGER_CURRENCY])) {
         const converted = entries.reduce((sum, entry) => sum + (convertCents(entry.cents, entry.currency, LEDGER_CURRENCY, exchangeRates.rates) || 0), 0);
-        const approximate = entries.some((entry) => entry.currency !== LEDGER_CURRENCY);
-        return { value: `${approximate ? "≈ " : ""}${formatPrice(converted, LEDGER_CURRENCY)}`, breakdown: approximate ? breakdown : "" };
+        return `≈ ${formatPrice(converted, LEDGER_CURRENCY)}`;
       }
-      if (Object.keys(subtotals).length === 1) return { value: breakdown, breakdown: "" };
-      return { value: breakdown || "Rates unavailable", breakdown: "Conversion unavailable" };
+      return "USD estimate unavailable";
     };
     const purchaseSummary = summarize(purchased.map((watch) => ({ cents: watch.purchasePriceCents!, currency: watch.currency })));
     const currentSummary = summarize(valued.map((watch) => ({
@@ -411,12 +407,9 @@ export default function WatchCollection() {
       currency: watch.marketPriceCents !== null ? watch.marketCurrency : watch.currency,
     })));
     return {
-      purchaseValue: recordedPurchases ? purchaseSummary.value : "Not recorded",
-      currentValue: valued.length ? currentSummary.value : owned.length ? "Not recorded" : "No watches yet",
-      futureSpend: valuedWishlist.length ? wishlistSummary.value : wishlist.length ? "Not estimated" : "No watches yet",
-      purchaseBreakdown: purchaseSummary.breakdown,
-      currentBreakdown: currentSummary.breakdown,
-      futureSpendBreakdown: wishlistSummary.breakdown,
+      purchaseValue: recordedPurchases ? purchaseSummary : "Not recorded",
+      currentValue: valued.length ? currentSummary : owned.length ? "Not recorded" : "No watches yet",
+      futureSpend: valuedWishlist.length ? wishlistSummary : wishlist.length ? "Not estimated" : "No watches yet",
       providerValues: valued.filter((watch) => watch.marketProvider === "the-watch-info").length,
       recordedPurchases,
       owned: owned.length,
@@ -1275,9 +1268,9 @@ export default function WatchCollection() {
           <div><h2 id="ledger-heading">Collection at a glance</h2><p>The useful numbers behind the watch box.</p></div>
         </div>
         <div className="ledger-grid">
-          <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded{collectorLedger.purchaseBreakdown && <em>{collectorLedger.purchaseBreakdown}</em>}</span></article>
-          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.currentBreakdown && <em>{collectorLedger.currentBreakdown}</em>}{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
-          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated value for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces{collectorLedger.futureSpendBreakdown && <em>{collectorLedger.futureSpendBreakdown}</em>}{exchangeRates && <em>ECB rates · {new Date(`${exchangeRates.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</em>}</span></article>
+          <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded</span></article>
+          <article><small>Current tracked value</small><strong>{collectorLedger.currentValue}</strong><span>Market estimates preferred when available{collectorLedger.providerValues > 0 && <a href="https://thewatchinfo.com" target="_blank" rel="noreferrer">Data from The Watch Info ↗</a>}</span></article>
+          <article className="future-spend"><small>Future spend</small><strong>{collectorLedger.futureSpend}</strong><span>Estimated in USD for {collectorLedger.valuedWishlist} of {collectorLedger.wishlist} wishlist pieces{exchangeRates && <em>ECB rates · {new Date(`${exchangeRates.date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</em>}</span></article>
           <article className={stats.serviceDue ? "needs-attention" : ""}><small>Service desk</small><strong>{stats.serviceDue ? `${stats.serviceDue} due` : "All clear"}</strong><span>Upcoming service dates stay in Details</span></article>
           <article><small>Wrist time</small><strong>{stats.wears} wears</strong><span>Log a wear from an owned watch’s Details</span></article>
         </div>
