@@ -270,8 +270,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visib
 .ledger-intro { display: flex; align-items: baseline; gap: 21px; margin-bottom: 24px; }
 .ledger-intro h2 { margin: 0; font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; }
 .ledger-intro p { margin: 5px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; }
-.ledger-currency { margin-left: auto; display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.ledger-currency select { height: 32px; padding: 0 25px 0 9px; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font-size: 9px; font-weight: 700; }
 .ledger-grid { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
 .ledger-grid article { min-height: 132px; padding: 22px 20px; border-right: 1px solid var(--line); }
 .ledger-grid article:first-child { padding-left: 0; }
@@ -1488,7 +1486,6 @@ footer span:last-child { text-align: right; }
   .directory-heading p { display: none; }
   .ledger-intro p { display: none; }
   .ledger-intro { align-items: flex-start; flex-wrap: wrap; }
-  .ledger-currency { width: 100%; margin-left: 39px; }
   .ledger-grid { grid-template-columns: 1fr; }
   .ledger-grid article, .ledger-grid article:nth-child(2), .ledger-grid article:nth-child(3) { min-height: 105px; padding: 18px 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .ledger-grid article:last-child { border-bottom: 0; }

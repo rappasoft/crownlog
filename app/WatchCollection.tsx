@@ -139,9 +139,8 @@ const FILTERS: { label: string; value: Filter }[] = [
   { label: "Duplicates", value: "duplicates" },
 ];
 const VIEW_PREFERENCE_KEY = "crownlog-view-mode";
-const LEDGER_CURRENCY_KEY = "crownlog-ledger-currency";
 const EXCHANGE_RATES_CACHE_KEY = "crownlog-exchange-rates";
-const SUPPORTED_CURRENCIES = ["USD", "EUR", "GBP", "AUD", "CAD", "CHF", "JPY"];
+const LEDGER_CURRENCY = "USD";
 
 function countLabel(count: number) {
   return `${count} ${count === 1 ? "watch" : "watches"}`;
@@ -242,7 +241,6 @@ export default function WatchCollection() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("brand");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [ledgerCurrency, setLedgerCurrency] = useState("USD");
   const [exchangeRates, setExchangeRates] = useState<ExchangeRateSnapshot | null>(null);
   const [checkingAllPrices, setCheckingAllPrices] = useState(false);
   const [bulkPriceMessage, setBulkPriceMessage] = useState("");
@@ -301,15 +299,13 @@ export default function WatchCollection() {
   }, []);
 
   useEffect(() => {
-    const savedCurrency = window.localStorage.getItem(LEDGER_CURRENCY_KEY);
-    if (savedCurrency && SUPPORTED_CURRENCIES.includes(savedCurrency)) {
-      // Restore the preferred ledger currency after hydration.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLedgerCurrency(savedCurrency);
-    }
     try {
       const savedRates = JSON.parse(window.localStorage.getItem(EXCHANGE_RATES_CACHE_KEY) || "null") as ExchangeRateSnapshot | null;
-      if (savedRates?.base === "EUR" && savedRates.date && savedRates.rates?.EUR === 1) setExchangeRates(savedRates);
+      if (savedRates?.base === "EUR" && savedRates.date && savedRates.rates?.EUR === 1) {
+        // Restore the last successful rate snapshot after hydration.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setExchangeRates(savedRates);
+      }
     } catch {
       window.localStorage.removeItem(EXCHANGE_RATES_CACHE_KEY);
     }
@@ -397,10 +393,10 @@ export default function WatchCollection() {
         return totals;
       }, {});
       const breakdown = Object.entries(subtotals).map(([currency, cents]) => formatPrice(cents, currency)).join(" + ");
-      if (exchangeRates && entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[ledgerCurrency])) {
-        const converted = entries.reduce((sum, entry) => sum + (convertCents(entry.cents, entry.currency, ledgerCurrency, exchangeRates.rates) || 0), 0);
-        const approximate = entries.some((entry) => entry.currency !== ledgerCurrency);
-        return { value: `${approximate ? "≈ " : ""}${formatPrice(converted, ledgerCurrency)}`, breakdown: approximate ? breakdown : "" };
+      if (exchangeRates && entries.every((entry) => exchangeRates.rates[entry.currency] && exchangeRates.rates[LEDGER_CURRENCY])) {
+        const converted = entries.reduce((sum, entry) => sum + (convertCents(entry.cents, entry.currency, LEDGER_CURRENCY, exchangeRates.rates) || 0), 0);
+        const approximate = entries.some((entry) => entry.currency !== LEDGER_CURRENCY);
+        return { value: `${approximate ? "≈ " : ""}${formatPrice(converted, LEDGER_CURRENCY)}`, breakdown: approximate ? breakdown : "" };
       }
       if (Object.keys(subtotals).length === 1) return { value: breakdown, breakdown: "" };
       return { value: breakdown || "Rates unavailable", breakdown: "Conversion unavailable" };
@@ -427,7 +423,7 @@ export default function WatchCollection() {
       wishlist: wishlist.length,
       valuedWishlist: valuedWishlist.length,
     };
-  }, [exchangeRates, ledgerCurrency, watches]);
+  }, [exchangeRates, watches]);
 
   const duplicateGroups = useMemo(() => duplicateListingGroups(watches), [watches]);
   const duplicateWatchIds = useMemo(() => new Set(duplicateGroups.flatMap((group) => group.map((watch) => watch.id))), [duplicateGroups]);
@@ -1277,10 +1273,6 @@ export default function WatchCollection() {
         <div className="ledger-intro">
           <span className="section-number">LEDGER</span>
           <div><h2 id="ledger-heading">Collection at a glance</h2><p>The useful numbers behind the watch box.</p></div>
-          <label className="ledger-currency"><span>Display currency</span><select value={ledgerCurrency} onChange={(event) => {
-            setLedgerCurrency(event.target.value);
-            window.localStorage.setItem(LEDGER_CURRENCY_KEY, event.target.value);
-          }}>{SUPPORTED_CURRENCIES.map((currency) => <option key={currency}>{currency}</option>)}</select></label>
         </div>
         <div className="ledger-grid">
           <article><small>Purchase total</small><strong>{collectorLedger.purchaseValue}</strong><span>{collectorLedger.recordedPurchases} of {collectorLedger.owned} owned pieces recorded{collectorLedger.purchaseBreakdown && <em>{collectorLedger.purchaseBreakdown}</em>}</span></article>
