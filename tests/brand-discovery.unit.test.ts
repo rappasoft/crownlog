@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isLikelyWatchProduct, looksLikeProductUrl, sitemapLocations } from "../app/api/brands/discover/discovery";
+import { isLikelyWatchProduct, looksLikeProductUrl, productLinksFromHtml, sitemapLocations } from "../app/api/brands/discover/discovery";
 
 test("reads product locations from sitemap XML", () => {
   assert.deepEqual(sitemapLocations(`<?xml version="1.0"?><urlset><url><loc>https://example.com/products/blue-watch?x=1&amp;y=2</loc></url><url><loc>https://example.com/pages/about</loc></url></urlset>`), [
@@ -16,6 +16,21 @@ test("recognizes common storefront product paths", () => {
   assert.equal(looksLikeProductUrl("https://example.com/products/rubber-watch-band"), false);
   assert.equal(looksLikeProductUrl("https://example.com/collections/watches"), false);
   assert.equal(looksLikeProductUrl("https://example.com/pages/about"), false);
+});
+
+test("extracts same-site product links from a collection page", () => {
+  const html = `<a class="card-product" href="/us-en/products/presage/ssk037j1">Watch one</a>
+    <a href="https://www.seikowatches.com/us-en/products/presage/ssa459j1?variant=blue&amp;size=40" class="product-card">Watch two</a>
+    <a href="/us-en/products/presage/cocktailtime">Current collection</a>
+    <a href="/uk-en/products/presage/cocktailtime">Alternate-locale collection</a>
+    <a href="/us-en/products/prospex/spb501j1">Unrelated navigation product</a>
+    <a href="https://example.com/products/not-seiko">External product</a>
+    <a href="/us-en/products/presage/ssk037j1">Duplicate</a>`;
+
+  assert.deepEqual(productLinksFromHtml(html, "https://www.seikowatches.com/us-en/products/presage/cocktailtime"), [
+    "https://www.seikowatches.com/us-en/products/presage/ssk037j1",
+    "https://www.seikowatches.com/us-en/products/presage/ssa459j1?variant=blue&size=40",
+  ]);
 });
 
 test("requires watch-specific product evidence", () => {

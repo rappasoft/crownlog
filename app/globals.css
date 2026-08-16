@@ -1401,8 +1401,12 @@ footer span:last-child { text-align: right; }
 .discovery-source { padding: 62px 0 45px; display: grid; grid-template-columns: minmax(260px, .8fr) 1.2fr; align-items: end; gap: 55px; border-bottom: 1px solid var(--line); }
 .discovery-source h2, .discovery-heading h2 { margin: 8px 0 0; font-family: Georgia, serif; font-size: 34px; font-weight: 400; letter-spacing: -.03em; }
 .discovery-source p, .discovery-heading p { margin: 8px 0 0; color: var(--muted); font-family: Georgia, serif; font-size: 13px; font-style: italic; line-height: 1.5; }
+.discovery-source-forms { display: grid; gap: 18px; }
 .discovery-source form { display: grid; grid-template-columns: minmax(200px, 1fr) auto auto; gap: 9px; }
 .discovery-source input { min-width: 0; height: 44px; padding: 0 13px; border: 1px solid var(--line); background: var(--white); font-size: 12px; }
+.discovery-source .collection-fetch-form { padding-top: 18px; grid-template-columns: minmax(170px, .65fr) minmax(220px, 1fr) auto; align-items: end; border-top: 1px solid var(--line); }
+.collection-fetch-form label { display: block; margin-bottom: 5px; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.collection-fetch-form small { display: block; color: var(--muted); font-family: Georgia, serif; font-size: 11px; font-style: italic; line-height: 1.35; }
 .discovery-message { max-width: 1224px; margin: 22px auto 0; padding: 13px 15px; border-left: 3px solid var(--green); background: #e8eee8; color: var(--green); font-size: 12px; }
 .discovery-message.is-error { border-color: var(--accent); background: #f0dcd4; color: var(--accent-dark); }
 .discovery-tray, .brand-saved-watches { padding: 68px 0 75px; }
@@ -1490,6 +1494,8 @@ footer span:last-child { text-align: right; }
   .discovery-source { grid-template-columns: 1fr; gap: 25px; }
   .discovery-source form { grid-template-columns: 1fr auto; }
   .discovery-source form .add-button { grid-column: 1 / -1; }
+  .discovery-source .collection-fetch-form { grid-template-columns: 1fr auto; }
+  .collection-fetch-form > div { grid-column: 1 / -1; }
   .discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .brand-saved-grid { grid-template-columns: repeat(2, 1fr); }
 }

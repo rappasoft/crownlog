@@ -24,6 +24,15 @@ test("collection exposes fetched watches as reviewable drafts", async () => {
   assert.match(discoveryRoute, /where\(eq\(brandDiscoveries\.status, "draft"\)\)/);
 });
 
+test("a collection URL can establish a missing brand website", async () => {
+  const discovery = await readFile(new URL("../app/brands/BrandDiscovery.tsx", import.meta.url), "utf8");
+  const discoveryRoute = await readFile(new URL("../app/api/brands/discover/route.ts", import.meta.url), "utf8");
+
+  assert.match(discovery, /if \(!state\?\.brand\.websiteUrl && !collectionUrl\)/);
+  assert.match(discoveryRoute, /if \(!brand\.websiteUrl && !collectionUrl\)/);
+  assert.match(discoveryRoute, /websiteUrl: collectionStorefront/);
+});
+
 test("saved watches expose their retailer listing in every collection view", async () => {
   const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
 

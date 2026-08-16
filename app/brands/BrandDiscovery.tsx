@@ -57,7 +57,7 @@ function formatPrice(cents: number | null, currency = "USD") {
 export default function BrandDiscovery({ brandId }: { brandId: string }) {
   const [state, setState] = useState<BrandState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetching, setFetching] = useState(false);
+  const [fetching, setFetching] = useState<"catalog" | "collection" | null>(null);
   const [savingWebsite, setSavingWebsite] = useState(false);
   const [workingId, setWorkingId] = useState("");
   const [message, setMessage] = useState("");
@@ -111,21 +111,24 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
     }
   }
 
-  async function fetchWatches() {
-    if (!state?.brand.websiteUrl) {
+  async function fetchWatches(collectionUrl = "") {
+    if (!state?.brand.websiteUrl && !collectionUrl) {
       setError("Add a catalog website first.");
       return;
     }
-    setFetching(true);
-    setMessage(`Looking through ${state.brand.category === "retailer" ? "the retailer’s" : "the brand’s"} public product pages…`);
+    const fetchMode = collectionUrl ? "collection" : "catalog";
+    setFetching(fetchMode);
+    setMessage(collectionUrl
+      ? "Reading the collection page and its individual watch listings…"
+      : `Looking through ${state.brand.category === "retailer" ? "the retailer’s" : "the brand’s"} public product pages…`);
     setError("");
     try {
       const response = await fetch("/api/brands/discover", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ brandId }),
+        body: JSON.stringify({ brandId, ...(collectionUrl ? { collectionUrl } : {}) }),
       });
-      const data = await response.json() as BrandState & { fetch?: { found: number; scanned: number; available: number; timedOut?: boolean }; error?: string };
+      const data = await response.json() as BrandState & { fetch?: { found: number; scanned: number; available: number; timedOut?: boolean; mode?: "catalog" | "collection" }; error?: string };
       if (!response.ok || !data.brand) throw new Error(data.error || "Couldn’t fetch watches from this brand.");
       setState(data);
       setMessage(data.fetch?.timedOut
@@ -133,14 +136,20 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
           ? `The catalog paused after 35 seconds, but found ${data.fetch.found} new ${data.fetch.found === 1 ? "watch" : "watches"}. You can fetch again for more.`
           : "The catalog paused after 35 seconds without finding a new watch. You can try again; Crownlog will skip anything already reviewed."
         : data.fetch?.found
-        ? `Found ${data.fetch.found} new ${data.fetch.found === 1 ? "watch" : "watches"}. Keep the ones that belong on your wishlist.`
+        ? `${data.fetch.mode === "collection" ? "Imported" : "Found"} ${data.fetch.found} new ${data.fetch.found === 1 ? "watch" : "watches"}. Keep the ones that belong on your wishlist.`
         : "No unseen watches were found this time. Crownlog remembers everything you already reviewed.");
     } catch (fetchError) {
       setMessage("");
       setError(fetchError instanceof Error ? fetchError.message : "Couldn’t fetch watches from this brand.");
     } finally {
-      setFetching(false);
+      setFetching(null);
     }
+  }
+
+  function fetchCollection(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const collectionUrl = String(new FormData(event.currentTarget).get("collectionUrl") || "").trim();
+    void fetchWatches(collectionUrl);
   }
 
   async function reviewDiscovery(discovery: Discovery, action: "keep" | "dismiss") {
@@ -193,11 +202,18 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
 
           <section className="discovery-source" aria-labelledby="discovery-source-title">
             <div><span className="section-number">SOURCE</span><h2 id="discovery-source-title">Where should Crownlog look?</h2><p>Use a public brand or retailer catalog. Fetches stay local and only run when you press the button.</p></div>
-            <form onSubmit={saveWebsite}>
-              <input name="websiteUrl" type="url" required defaultValue={state.brand.websiteUrl} placeholder="https://www.citizenwatch.com/" aria-label="Official brand website" />
-              <button className="outline-button" disabled={savingWebsite}>{savingWebsite ? "Saving…" : "Save website"}</button>
-              <button className="add-button" type="button" disabled={fetching || savingWebsite || !state.brand.websiteUrl} onClick={() => void fetchWatches()}>{fetching ? "Fetching…" : "Fetch new watches"}</button>
-            </form>
+            <div className="discovery-source-forms">
+              <form onSubmit={saveWebsite}>
+                <input name="websiteUrl" type="url" required defaultValue={state.brand.websiteUrl} placeholder="https://www.citizenwatch.com/" aria-label="Official brand website" />
+                <button className="outline-button" disabled={savingWebsite}>{savingWebsite ? "Saving…" : "Save website"}</button>
+                <button className="add-button" type="button" disabled={Boolean(fetching) || savingWebsite || !state.brand.websiteUrl} onClick={() => void fetchWatches()}>{fetching === "catalog" ? "Fetching…" : "Fetch new watches"}</button>
+              </form>
+              <form className="collection-fetch-form" onSubmit={fetchCollection}>
+                <div><label htmlFor="collectionUrl">Collection or model family</label><small>Paste a page that lists the individual watches you want sent to Drafts.</small></div>
+                <input id="collectionUrl" name="collectionUrl" type="url" required placeholder="https://www.seikowatches.com/.../cocktailtime" aria-label="Collection or model-family page" />
+                <button className="outline-button" disabled={Boolean(fetching)}>{fetching === "collection" ? "Importing…" : "Fetch collection"}</button>
+              </form>
+            </div>
           </section>
 
           {(message || error) && <div className={error ? "discovery-message is-error" : "discovery-message"} role={error ? "alert" : "status"}>{error || message}</div>}
@@ -218,7 +234,7 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
                 ))}
               </div>
             ) : (
-              <div className="discovery-empty"><div className="empty-dial" aria-hidden="true"><span /></div><h3>Your tray is empty</h3><p>{state.brand.websiteUrl ? "Fetch a random selection from this public catalog." : "Save the catalog website above, then fetch your first selection."}</p><button className="add-button" disabled={!state.brand.websiteUrl || fetching} onClick={() => void fetchWatches()}>{fetching ? "Fetching…" : "Fetch new watches"}</button></div>
+              <div className="discovery-empty"><div className="empty-dial" aria-hidden="true"><span /></div><h3>Your tray is empty</h3><p>{state.brand.websiteUrl ? "Fetch a random selection from this public catalog, or import a collection above." : "Save the catalog website above, then fetch your first selection."}</p><button className="add-button" disabled={!state.brand.websiteUrl || Boolean(fetching)} onClick={() => void fetchWatches()}>{fetching === "catalog" ? "Fetching…" : "Fetch new watches"}</button></div>
             )}
           </section>
 

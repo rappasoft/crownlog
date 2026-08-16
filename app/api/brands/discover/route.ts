@@ -3,7 +3,7 @@ import { canonicalBrandName, ensureDatabase, getDb } from "../../../../db";
 import { brandDiscoveries, brands, priceHistory, watches } from "../../../../db/schema";
 import { canonicalListingUrl } from "../../../listing-url";
 import { extractProductMetadata, fetchProductPage } from "../../product-metadata";
-import { discoverProductUrls, isLikelyWatchProduct } from "./discovery";
+import { discoverCollectionProductUrls, discoverProductUrls, isLikelyWatchProduct } from "./discovery";
 
 const DISCOVERY_JOB_TIMEOUT_MS = 35000;
 const DISCOVERY_PAGE_OPTIONS = { attempts: 1, timeoutMs: 7000 } as const;
@@ -41,6 +41,10 @@ function grailScore(value: unknown) {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Something went wrong.";
+}
+
+function normalizedHostname(value: string) {
+  return new URL(value).hostname.toLowerCase().replace(/^www\./, "");
 }
 
 async function brandState(brandId: string) {
@@ -95,18 +99,39 @@ export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as Record<string, unknown>;
     const brandId = clean(payload.brandId, 80);
+    const collectionUrl = clean(payload.collectionUrl, 1500);
     if (!brandId) return Response.json({ error: "A brand is required." }, { status: 400 });
     await ensureDatabase();
     const db = getDb();
     const [brand] = await db.select().from(brands).where(eq(brands.id, brandId)).limit(1);
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
-    if (!brand.websiteUrl) return Response.json({ error: "Add a catalog website before fetching watches." }, { status: 400 });
+    if (!brand.websiteUrl && !collectionUrl) return Response.json({ error: "Add a catalog website before fetching watches." }, { status: 400 });
+
+    if (collectionUrl) {
+      try {
+        const publicCollectionUrl = publicProductUrl(collectionUrl);
+        if (brand.websiteUrl && normalizedHostname(publicCollectionUrl.toString()) !== normalizedHostname(brand.websiteUrl)) {
+          return Response.json({ error: `Use a collection page from ${brand.name}’s saved website.` }, { status: 400 });
+        }
+        if (!brand.websiteUrl) {
+          const collectionStorefront = new URL("/", publicCollectionUrl).toString();
+          await db.update(brands).set({ websiteUrl: collectionStorefront, updatedAt: new Date().toISOString() }).where(eq(brands.id, brandId));
+        }
+      } catch {
+        return Response.json({ error: "Enter a valid public HTTPS collection page." }, { status: 400 });
+      }
+    }
 
     const controller = new AbortController();
     deadline = setTimeout(() => controller.abort(), DISCOVERY_JOB_TIMEOUT_MS);
-    const productUrls = await discoverProductUrls(brand.websiteUrl, controller.signal, { retailer: brand.category === "retailer" });
+    const collectionMode = Boolean(collectionUrl);
+    const productUrls = collectionMode
+      ? await discoverCollectionProductUrls(collectionUrl, controller.signal)
+      : await discoverProductUrls(brand.websiteUrl, controller.signal, { retailer: brand.category === "retailer" });
     if (!productUrls.length) {
-      return Response.json({ error: "No product pages were found in this catalog’s public sitemap. The site may need a custom adapter." }, { status: 422 });
+      return Response.json({ error: collectionMode
+        ? "No individual watch links were found on that collection page. The site may load its catalog with JavaScript or need a custom adapter."
+        : "No product pages were found in this catalog’s public sitemap. The site may need a custom adapter." }, { status: 422 });
     }
 
     const [seenDiscoveries, savedWatches] = await Promise.all([
@@ -118,12 +143,17 @@ export async function POST(request: Request) {
       ...savedWatches.map((item) => canonicalListingUrl(item.listingUrl)).filter(Boolean),
     ]);
     const unseen = productUrls.filter((url) => !seenUrls.has(canonicalListingUrl(url)));
-    const shuffled = unseen.map((url) => ({ url, order: Math.random() })).sort((a, b) => a.order - b.order).map((item) => item.url);
+    const candidates = collectionMode
+      ? unseen
+      : unseen.map((url) => ({ url, order: Math.random() })).sort((a, b) => a.order - b.order).map((item) => item.url);
+    const scanLimit = collectionMode ? 60 : 18;
+    const resultLimit = collectionMode ? 60 : 8;
+    const batchSize = collectionMode ? 5 : 3;
     let scanned = 0;
     let found = 0;
 
-    for (let offset = 0; offset < Math.min(shuffled.length, 18) && found < 8 && !controller.signal.aborted; offset += 3) {
-      const batch = shuffled.slice(offset, offset + 3);
+    for (let offset = 0; offset < Math.min(candidates.length, scanLimit) && found < resultLimit && !controller.signal.aborted; offset += batchSize) {
+      const batch = candidates.slice(offset, offset + batchSize);
       const products = await Promise.all(batch.map(async (url) => {
         try {
           const page = await fetchProductPage(new URL(url), { ...DISCOVERY_PAGE_OPTIONS, signal: controller.signal });
@@ -159,12 +189,12 @@ export async function POST(request: Request) {
         }).onConflictDoNothing();
         seenUrls.add(canonicalUrl);
         found += 1;
-        if (found >= 8) break;
+        if (found >= resultLimit) break;
       }
     }
 
     const state = await brandState(brandId);
-    return Response.json({ ...state, fetch: { found, scanned, available: unseen.length, timedOut: controller.signal.aborted } });
+    return Response.json({ ...state, fetch: { found, scanned, available: unseen.length, timedOut: controller.signal.aborted, mode: collectionMode ? "collection" : "catalog" } });
   } catch (error) {
     return Response.json({ error: errorMessage(error) }, { status: 422 });
   } finally {

@@ -59,7 +59,7 @@ The runtime-managed database file is stored under `data/v3/d1/miniflare-D1Databa
 
 The app uses browser `localStorage` only to remember the selected List, Grid, or Table display. Watches, brands, discovery decisions, prices, and personal records remain in project-local SQLite. Crownlog does not need MySQL and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
 
-When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. When you explicitly choose **Fetch new watches**, Crownlog requests the selected brand’s public sitemap and product pages. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
+When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. When you explicitly choose **Fetch new watches** or **Fetch collection**, Crownlog requests the selected brand’s public catalog and product pages. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
 
 A fresh Git clone starts with a completely empty database: no watches, followed brands, prices, or personal notes are bundled with the source. Crownlog creates the schema automatically the first time it starts. Existing installations keep their current data when the source code is updated.
 
@@ -91,6 +91,8 @@ Each followed brand has a dedicated page. Open a brand card from the main direct
 3. Crownlog reads public sitemap entries and a small random batch of likely product pages, filtering out accessories, jewelry, gift cards, and other non-watch products.
 4. Review the imported image, model, reference, price, and original product link in the **Discovery Tray**.
 5. Choose **Keep + wishlist** to accept the fetched details unchanged, or choose **Dismiss** to hide that product permanently.
+
+To import a whole named collection or model family, open its followed brand, paste the collection page into **Collection or model family**, and choose **Fetch collection**. For example, Seiko’s Presage Cocktail Time page exposes its individual watch listings, so Crownlog can send those watches to Drafts together. If the brand does not have a website yet, Crownlog saves the collection page’s storefront automatically. Collection imports scan up to 60 linked products per run; if a large or slow catalog pauses, run it again to continue with the unseen links.
 
 Draft, kept, and dismissed products are stored separately from the wishlist. Repeated fetches skip previously reviewed URLs and watches already saved in Crownlog. The brand page also shows watches from that brand already in the collection.
 

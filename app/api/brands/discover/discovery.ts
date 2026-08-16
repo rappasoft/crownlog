@@ -1,4 +1,4 @@
-import { publicProductUrl, type ProductMetadata } from "../../product-metadata";
+import { fetchProductPage, publicProductUrl, type ProductMetadata } from "../../product-metadata";
 
 const NON_WATCH_PRODUCT = /\b(?:straps?|bands?|bracelets?|buckles?|clasps?|spring[- ]?bars?|watch[- ]?(?:rolls?|boxes?|cases?|winders?|tools?)|gift[- ]?cards?|warrant(?:y|ies)|services?|repairs?|pens?|pencils?|rings?|earrings?|necklaces?|cufflinks?|alphabets?|clocks?|sunglasses?|shirts?|t-shirts?|hoodies?|hats?|caps?|bags?|totes?|wallets?)\b/i;
 const WATCH_EVIDENCE = /\b(?:watch(?:es)?|timepieces?|wristwatches?|chronographs?|dive watch|diver(?:'s)? watch|watchmaking|horology|automatic movement|mechanical movement|quartz movement|calib(?:er|re)|power reserve|watch dial|dial|bezel|case diameter|case size|lug-to-lug|sapphire crystal|water[- ]resistan(?:t|ce)|meters? water resistance)\b/i;
@@ -46,6 +46,60 @@ export function isLikelyWatchProduct(product: ProductMetadata) {
 function sameStorefront(candidate: URL, storefront: URL) {
   const normalize = (hostname: string) => hostname.toLowerCase().replace(/^www\./, "");
   return normalize(candidate.hostname) === normalize(storefront.hostname);
+}
+
+function comparablePageUrl(url: URL) {
+  return `${url.origin}${url.pathname.replace(/\/+$/, "")}`.toLowerCase();
+}
+
+function finalPathSegment(url: URL) {
+  return url.pathname.replace(/\/+$/, "").split("/").at(-1)?.toLowerCase() || "";
+}
+
+export function productLinksFromHtml(html: string, pageUrl: string) {
+  const storefront = publicProductUrl(pageUrl);
+  const sourcePage = comparablePageUrl(storefront);
+  const sourceLeaf = finalPathSegment(storefront);
+  const sourceDirectory = storefront.pathname.replace(/[^/]*\/?$/, "");
+  const productUrls: string[] = [];
+  const productCardUrls: string[] = [];
+  const seen = new Set<string>();
+  const seenProductCards = new Set<string>();
+
+  for (const match of html.matchAll(/<a\b([\s\S]*?)>/gi)) {
+    try {
+      const attributes = match[1];
+      const href = attributes.match(/\bhref\s*=\s*(["'])([\s\S]*?)\1/i)?.[2];
+      if (!href) continue;
+      const candidate = publicProductUrl(new URL(decodeXml(href.trim()), storefront).toString());
+      candidate.hash = "";
+      if (!sameStorefront(candidate, storefront)
+        || comparablePageUrl(candidate) === sourcePage
+        || finalPathSegment(candidate) === sourceLeaf
+        || !looksLikeProductUrl(candidate.toString())) continue;
+      const value = candidate.toString();
+      const isProductCard = /\bclass\s*=\s*(["'])[^"']*(?:product[-_ ]?(?:card|tile|item)|card[-_ ]?product)[^"']*\1/i.test(attributes);
+      if (!seen.has(value)) {
+        seen.add(value);
+        productUrls.push(value);
+      }
+      if (isProductCard && !seenProductCards.has(value)) {
+        seenProductCards.add(value);
+        productCardUrls.push(value);
+      }
+    } catch {
+      // Ignore navigation, malformed, and non-public links.
+    }
+  }
+
+  if (productCardUrls.length >= 2) return productCardUrls;
+  const sameCollectionDirectory = productUrls.filter((value) => new URL(value).pathname.startsWith(sourceDirectory));
+  return sameCollectionDirectory.length >= 2 ? sameCollectionDirectory : productUrls;
+}
+
+export async function discoverCollectionProductUrls(collectionUrl: string, signal?: AbortSignal) {
+  const page = await fetchProductPage(publicProductUrl(collectionUrl), { attempts: 1, timeoutMs: 10000, signal });
+  return productLinksFromHtml(page.html, page.finalUrl.toString()).slice(0, 300);
 }
 
 const SITEMAP_READ_LIMIT = 5_000_000;
