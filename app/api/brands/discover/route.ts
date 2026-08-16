@@ -2,7 +2,7 @@ import { asc, desc, eq, sql } from "drizzle-orm";
 import { canonicalBrandName, ensureDatabase, getDb } from "../../../../db";
 import { brandDiscoveries, brands, priceHistory, watches } from "../../../../db/schema";
 import { canonicalListingUrl } from "../../../listing-url";
-import { extractProductMetadata, fetchProductPage } from "../../product-metadata";
+import { extractProductMetadata, fetchProductPage, publicProductUrl } from "../../product-metadata";
 import { discoverCollectionProductUrls, discoverProductUrls, isLikelyWatchProduct } from "./discovery";
 
 const DISCOVERY_JOB_TIMEOUT_MS = 35000;
@@ -107,19 +107,18 @@ export async function POST(request: Request) {
     if (!brand) return Response.json({ error: "Brand not found." }, { status: 404 });
     if (!brand.websiteUrl && !collectionUrl) return Response.json({ error: "Add a catalog website before fetching watches." }, { status: 400 });
 
+    let collectionStorefront = "";
     if (collectionUrl) {
+      let publicCollectionUrl: URL;
       try {
-        const publicCollectionUrl = publicProductUrl(collectionUrl);
-        if (brand.websiteUrl && normalizedHostname(publicCollectionUrl.toString()) !== normalizedHostname(brand.websiteUrl)) {
-          return Response.json({ error: `Use a collection page from ${brand.name}’s saved website.` }, { status: 400 });
-        }
-        if (!brand.websiteUrl) {
-          const collectionStorefront = new URL("/", publicCollectionUrl).toString();
-          await db.update(brands).set({ websiteUrl: collectionStorefront, updatedAt: new Date().toISOString() }).where(eq(brands.id, brandId));
-        }
+        publicCollectionUrl = publicProductUrl(collectionUrl);
       } catch {
         return Response.json({ error: "Enter a valid public HTTPS collection page." }, { status: 400 });
       }
+      if (brand.websiteUrl && normalizedHostname(publicCollectionUrl.toString()) !== normalizedHostname(brand.websiteUrl)) {
+        return Response.json({ error: `Use a collection page from ${brand.name}’s saved website.` }, { status: 400 });
+      }
+      collectionStorefront = new URL("/", publicCollectionUrl).toString();
     }
 
     const controller = new AbortController();
@@ -132,6 +131,9 @@ export async function POST(request: Request) {
       return Response.json({ error: collectionMode
         ? "No individual watch links were found on that collection page. The site may load its catalog with JavaScript or need a custom adapter."
         : "No product pages were found in this catalog’s public sitemap. The site may need a custom adapter." }, { status: 422 });
+    }
+    if (collectionStorefront && !brand.websiteUrl) {
+      await db.update(brands).set({ websiteUrl: collectionStorefront }).where(eq(brands.id, brandId));
     }
 
     const [seenDiscoveries, savedWatches] = await Promise.all([

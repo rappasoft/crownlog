@@ -28,9 +28,11 @@ test("a collection URL can establish a missing brand website", async () => {
   const discovery = await readFile(new URL("../app/brands/BrandDiscovery.tsx", import.meta.url), "utf8");
   const discoveryRoute = await readFile(new URL("../app/api/brands/discover/route.ts", import.meta.url), "utf8");
 
-  assert.match(discovery, /if \(!state\?\.brand\.websiteUrl && !collectionUrl\)/);
+  assert.match(discovery, /if \(!state\.brand\.websiteUrl && !collectionUrl\)/);
+  assert.match(discoveryRoute, /import \{ extractProductMetadata, fetchProductPage, publicProductUrl \} from "\.\.\/\.\.\/product-metadata"/);
   assert.match(discoveryRoute, /if \(!brand\.websiteUrl && !collectionUrl\)/);
   assert.match(discoveryRoute, /websiteUrl: collectionStorefront/);
+  assert.doesNotMatch(discoveryRoute, /websiteUrl: collectionStorefront, updatedAt:/);
 });
 
 test("saved watches expose their retailer listing in every collection view", async () => {

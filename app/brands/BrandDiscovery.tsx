@@ -112,7 +112,8 @@ export default function BrandDiscovery({ brandId }: { brandId: string }) {
   }
 
   async function fetchWatches(collectionUrl = "") {
-    if (!state?.brand.websiteUrl && !collectionUrl) {
+    if (!state) return;
+    if (!state.brand.websiteUrl && !collectionUrl) {
       setError("Add a catalog website first.");
       return;
     }
