@@ -225,3 +225,13 @@ test("saved watch images open in a large lightbox", async () => {
   assert.match(collection, /className="image-lightbox"/);
   assert.match(collection, /Open original image/);
 });
+
+test("watch roulette displays the selected watch image", async () => {
+  const collection = await readFile(new URL("../app/WatchCollection.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(collection, /rouletteWatch\.imageUrl \?/);
+  assert.match(collection, /className="roulette-image"/);
+  assert.match(collection, /alt=\{`\$\{rouletteWatch\.brand\} \$\{rouletteWatch\.model\}`\}/);
+  assert.match(styles, /\.roulette-image img \{[^}]*object-fit: contain/);
+});

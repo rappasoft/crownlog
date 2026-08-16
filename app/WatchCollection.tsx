@@ -2155,7 +2155,14 @@ export default function WatchCollection() {
           <section className="roulette-modal" role="dialog" aria-modal="true" aria-labelledby="roulette-title">
             <button className="roulette-close" onClick={() => setRouletteWatch(null)} aria-label="Close watch roulette">×</button>
             <span className="eyebrow"><span /> THE WATCH ROULETTE</span>
-            <div className="roulette-dial" aria-hidden="true"><span>{rouletteWatch.brand.charAt(0)}</span></div>
+            {rouletteWatch.imageUrl ? (
+              <div className="roulette-image">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={rouletteWatch.imageUrl} alt={`${rouletteWatch.brand} ${rouletteWatch.model}`} referrerPolicy="no-referrer" />
+              </div>
+            ) : (
+              <div className="roulette-dial" aria-hidden="true"><span>{rouletteWatch.brand.charAt(0)}</span></div>
+            )}
             <p>Today’s object of obsession</p>
             <h2 id="roulette-title">{rouletteWatch.model}</h2>
             <h3>{rouletteWatch.brand}</h3>

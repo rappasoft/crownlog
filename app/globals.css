@@ -1358,6 +1358,17 @@ footer span:last-child { text-align: right; }
 }
 .roulette-modal > .eyebrow { justify-content: center; }
 .roulette-close { position: absolute; top: 15px; right: 17px; width: 36px; height: 36px; border: 1px solid var(--line); background: transparent; font-size: 20px; cursor: pointer; }
+.roulette-image {
+  width: min(360px, 100%);
+  height: 300px;
+  display: grid;
+  place-items: center;
+  margin: 26px auto 22px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--white);
+}
+.roulette-image img { width: 100%; height: 100%; object-fit: contain; }
 .roulette-dial {
   width: 132px;
   height: 132px;
@@ -1580,6 +1591,7 @@ footer span:last-child { text-align: right; }
   .delete-modal h2 { font-size: 30px; }
   .delete-actions { flex-direction: column-reverse; }
   .roulette-modal { padding: 38px 23px 30px; }
+  .roulette-image { height: 250px; }
   .roulette-actions { flex-direction: column; }
   .roulette-actions button { min-height: 44px; }
   .directory-card-edit, .directory-remove { opacity: .75; }

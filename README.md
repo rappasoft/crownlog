@@ -223,7 +223,7 @@ Choose **+ Compare** on two or three watches. The comparison tray appears at the
 
 ### Watch roulette
 
-Choose **Watch roulette** when you want Crownlog to pick a watch. Wishlist watches are preferred; if there are none, it chooses from the full collection. Spin again or open the selected watch’s Details.
+Choose **Watch roulette** when you want Crownlog to pick a watch. Wishlist watches are preferred; if there are none, it chooses from the full collection. The result shows the watch’s saved image when available, with the Crownlog dial as a fallback. Spin again or open the selected watch’s Details.
 
 ### Vault: backup, restore, and CSV
 
