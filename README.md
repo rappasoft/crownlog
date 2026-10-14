@@ -1,8 +1,8 @@
 # Crownlog
 
-Crownlog is a local-only personal watch index. It keeps followed brands, individual watches, collection records, product images, price history, service dates, and backups on your own computer.
+Crownlog is a self-hosted personal watch index. It keeps followed brands, individual watches, collection records, product-image URLs, price history, service dates, and backups on your own computer or server.
 
-There is no hosted Crownlog application and no account to create. The app runs at `http://localhost:3000` and stores its working database inside this project.
+There is no hosted Crownlog application and no account to create. The app runs at `http://localhost:3000` and stores its working database in the project's `data/` directory or a persistent Docker volume.
 
 > Crownlog is source-available for noncommercial use. Commercial use, paid hosting, resale, and other revenue-generating use are not licensed.
 
@@ -45,9 +45,90 @@ cd /path/to/Crownlog
 npm run dev
 ```
 
+## Docker deployment
+
+Install Docker with the Compose plugin (included in Docker Desktop), then clone or download this repository. From the project directory, run:
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+Open [http://localhost:3000](http://localhost:3000). Compose builds the `crownlog:local` image from source; a prebuilt registry image is not published. The container runs the compiled application with a local SQLite-compatible D1 runtime, without a Cloudflare account.
+
+Compose mounts the named volume `crownlog-data` at `/app/data`. This keeps your collection across container restarts, rebuilds, and replacements. A fresh volume starts empty. The image runs as a non-root user (UID/GID `1000:1000`).
+
+Manage the service with:
+
+```bash
+docker compose logs --tail=100 -f crownlog
+docker compose stop
+docker compose start
+```
+
+`docker compose down` removes the container but preserves the volume. **`docker compose down --volumes` deletes your collection.** Keep backups outside the volume and repository.
+
+### Accessing a remote server
+
+Crownlog has no authentication. Compose binds port 3000 to `127.0.0.1` on the Docker host, so other computers cannot connect directly. For a personal server, open an SSH tunnel from your computer:
+
+```bash
+ssh -L 3000:127.0.0.1:3000 user@server
+```
+
+Keep the tunnel open and visit `http://localhost:3000` on your computer. If you expose Crownlog publicly, put it behind an authenticated reverse proxy with HTTPS; anyone with access to the app can read, change, export, and delete collection data.
+
+### Updating or migrating
+
+Download a backup through **Vault → Download JSON** before upgrading, then run:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+To move an existing npm-based installation into Docker, download its JSON backup, stop the development server, start Docker, and use **Vault → Choose JSON**. The Docker volume is separate from your existing project `data/` directory. JSON restore merges matching IDs and adds missing records; it does not remove unrelated records.
+
+### Docker backups and restore
+
+**Vault → Download JSON** is the recommended portable backup. Save it outside the project and restore with **Vault → Choose JSON**, on this installation or a fresh one. CSV is an export for spreadsheets, not a complete backup.
+
+For an exact copy of the volume, stop Crownlog before archiving the entire directory. Do not copy only a live `.sqlite` file: its related journal files may contain recent writes. Run from the project directory, preserving any previous archive under another name before using this filename:
+
+```bash
+mkdir -p backups
+docker compose stop crownlog && docker run --rm --user root \
+  --volume crownlog-data:/data:ro \
+  --volume "$PWD/backups:/backups" \
+  --entrypoint tar crownlog:local \
+  -czf /backups/crownlog-data.tar.gz -C /data . \
+  && docker compose start crownlog
+```
+
+Check that the archive command succeeds, then copy `backups/crownlog-data.tar.gz` to a safe location outside the repository. This archive contains private collection data.
+
+Restore an archive into an **empty** `crownlog-data` volume on a fresh installation. Build the image first, place the archive in `backups/`, and run:
+
+```bash
+docker compose build
+docker compose stop crownlog
+docker volume create crownlog-data
+docker run --rm --user root \
+  --volume crownlog-data:/data \
+  --volume "$PWD/backups:/backups:ro" \
+  --entrypoint sh crownlog:local -c \
+  'test -z "$(ls -A /data)" && tar -xzf /backups/crownlog-data.tar.gz -C /data && chown -R 1000:1000 /data'
+```
+
+The restore command refuses a nonempty volume. If the volume already contains data, preserve it and use the JSON merge workflow instead of deleting it. Use the same Crownlog version as the archived installation before upgrading. After the restore command succeeds, start Crownlog:
+
+```bash
+docker compose up -d
+```
+
 ## Where your data is stored
 
-Crownlog uses a project-local, SQLite-compatible D1 database. The development runtime writes its SQLite state beneath:
+Crownlog uses a local, SQLite-compatible D1 database. With `npm run dev`, the runtime writes its SQLite state beneath:
 
 ```text
 data/
@@ -55,9 +136,11 @@ data/
 
 That directory is intentionally ignored by Git so personal collection data is not committed to the source repository. It survives app restarts and page reloads.
 
+With Docker, this same state lives in the `crownlog-data` volume mounted at `/app/data`; it is not stored in the image or your project directory.
+
 The runtime-managed database file is stored under `data/v3/d1/miniflare-D1DatabaseObject/` with a generated `.sqlite` filename. Stop Crownlog before copying or inspecting that file directly.
 
-The app uses browser `localStorage` only to remember the selected List, Grid, or Table display. Watches, brands, discovery decisions, prices, and personal records remain in project-local SQLite. Crownlog does not need MySQL and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
+The app uses browser `localStorage` only to remember the selected List, Grid, or Table display. Watches, brands, discovery decisions, prices, and personal records remain in local SQLite. Crownlog does not need MySQL and does not send collection records to a hosted Crownlog service. The current release supports local SQLite only; a MySQL adapter is not included.
 
 When you explicitly search for or refresh a market estimate, Crownlog sends only the watch brand, model, or reference needed for that lookup to The Watch Info. When you explicitly choose **Fetch new watches** or **Fetch collection**, Crownlog requests the selected brand’s public catalog and product pages. Notes, ownership records, purchase prices, service dates, and the rest of your collection stay local.
 
@@ -250,10 +333,9 @@ Brand logos under `public/brand-logos/` are local project assets. Their names an
 Recommended method:
 
 1. Open Crownlog and download a JSON backup from **Vault**.
-2. Copy the project to the new computer.
-3. Install Node.js and run `npm install`.
-4. Start Crownlog with `npm run dev`.
-5. Open **Vault → Choose JSON** and select the backup.
+2. Clone or copy the project to the new computer or server.
+3. Start Crownlog with [Docker](#docker-deployment), or install Node.js and run `npm install` followed by `npm run dev`.
+4. Open **Vault → Choose JSON** and select the backup.
 
 You may also copy the entire ignored `data/` directory while Crownlog is stopped, but the JSON workflow is more portable between versions.
 
@@ -261,7 +343,7 @@ You may also copy the entire ignored `data/` directory while Crownlog is stopped
 
 Before pulling or replacing project files, download a JSON backup. Project updates should not remove `data/`, but the backup protects against mistakes and makes version changes reversible.
 
-Then run:
+Docker users should follow [Updating or migrating](#updating-or-migrating) above. For npm-based installations, pull the latest source, then run:
 
 ```bash
 npm install
@@ -318,8 +400,13 @@ npm run dev          # Start Crownlog locally
 npm run build        # Create a production build
 npm run lint         # Check source quality
 npm test             # Build and run integration tests
+npm run test:docker  # Build Docker image; check startup, persistence, and backup/restore
 npm run db:generate  # Generate a migration after schema changes
 ```
+
+The Docker smoke test requires a running Docker engine. It creates isolated temporary containers and volumes and removes them afterward.
+
+To verify an AMD64 image, run `DOCKER_PLATFORM=linux/amd64 npm run test:docker`. Docker must support that architecture, either natively or through emulation. The test checks the image architecture and runs its containers on the selected platform.
 
 Database schema definitions live in `db/schema.ts`, local initialization is in `db/index.ts`, and generated migrations are kept in `drizzle/`.
 

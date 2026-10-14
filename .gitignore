@@ -38,6 +38,7 @@ yarn-error.log*
 /dist/
 /.wrangler/
 /data/
+/backups/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal

@@ -1,0 +1,23 @@
+# Send only build inputs; collection data and backups never enter the image.
+**
+!package.json
+!package-lock.json
+!vite.config.ts
+!next.config.ts
+!tsconfig.json
+!postcss.config.mjs
+!app/
+!app/**
+!db/
+!db/**
+!worker/
+!worker/**
+!public/
+!public/**
+!vendor/
+!vendor/braces/
+!vendor/braces/**
+**/.env*
+**/*.pem
+**/*.sqlite*
+**/*.db*

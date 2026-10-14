@@ -1,0 +1,16 @@
+name: crownlog
+
+services:
+  crownlog:
+    build: .
+    image: crownlog:local
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - crownlog-data:/app/data
+
+volumes:
+  crownlog-data:
+    name: crownlog-data

@@ -1,0 +1,14 @@
+{
+  "name": "braces",
+  "version": "3.0.4-crownlog.1",
+  "description": "Braces 3.0.3 with bounded pattern and AST nesting for GHSA-vfj7-8cjw-p6xm.",
+  "homepage": "https://github.com/micromatch/braces",
+  "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+  "repository": "micromatch/braces",
+  "license": "MIT",
+  "main": "index.js",
+  "type": "commonjs",
+  "files": ["index.js", "lib", "LICENSE"],
+  "engines": { "node": ">=8" },
+  "dependencies": { "fill-range": "^7.1.1" }
+}

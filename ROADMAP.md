@@ -2,6 +2,10 @@
 
 Ideas are grouped by value and implementation size rather than promised release dates.
 
+## Delivered
+
+- **Docker deployment** — build a self-hosted image with Compose, persistent storage, and documented deployment, backups, and restore.
+
 ## Strong next additions
 
 - **Scheduled price checks and notifications** — refresh saved product links daily and send an email, push, or in-app alert at the target price.
@@ -32,7 +36,6 @@ Ideas are grouped by value and implementation size rather than promised release 
 ## Source-available and self-hosting
 
 - **Database adapters** — keep SQLite/D1 as the zero-config default and add optional PostgreSQL/MySQL adapters.
-- **Docker deployment** — a small self-hosted image with persistent storage and documented backups.
 - **Multi-user accounts** — isolate collections per user with optional sign-in.
 - **Plugin extractors** — community-maintained price parsers with conservative rate limits and clear store compatibility.
 - **Localization** — locale-aware currencies, measurements, dates, and translated UI.
